@@ -2,55 +2,71 @@
 #include "ir/ir_operand.h"
 #include "ir/ir_operator.h"
 
-
 ir::Instruction::Instruction() {}
 
-ir::Instruction::Instruction(const Operand& op1, const Operand& op2, const Operand& des, const Operator& op)
+ir::Instruction::Instruction(const Operand &op1, const Operand &op2, const Operand &des, const Operator &op)
     : op1(op1), op2(op2), des(des), op(op) {}
 
-ir::CallInst::CallInst(const Operand &op1, std::vector<Operand> paraList, const Operand &des) 
+ir::CallInst::CallInst(const Operand &op1, std::vector<Operand> paraList, const Operand &des)
     : Instruction(op1, Operand(), des, Operator::call), argumentList(paraList) {}
 
 ir::CallInst::CallInst(const Operand &op1, const Operand &des)
     : Instruction(op1, Operand(), des, Operator::call), argumentList() {}
 
-std::string ir::CallInst::draw() const {
+/**
+ * @brief 打印call型指令
+ * @return std::string
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-05-31
+ */
+std::string ir::CallInst::draw() const
+{
     std::string res = "call " + this->des.name + ", " + this->op1.name + "(";
-    for(const auto& arg: argumentList)
+    for (const auto &arg : argumentList)
         res += arg.name + ", ";
-    if(argumentList.size())
-        res = res.substr(0,res.size()-2);
+    if (argumentList.size())
+        res = res.substr(0, res.size() - 2);
     res += ")";
     return res;
 }
 
-std::string ir::Instruction::draw() const {
-    switch (this->op) {
-        case ir::Operator::_return:
-            return "return " + this->op1.name;
-        case ir::Operator::_goto:
-        {
-            if (this->op1.name != "null") return "if " + this->op1.name + " goto [pc, " + this->des.name + "]";
-            else return "goto [pc, " + this->des.name + "]";
-        }
-        case ir::Operator::alloc:
-            return "alloc " + this->des.name + ", " + this->op1.name;
-        case ir::Operator::mov:
-            return "mov " + this->des.name + ", " + this->op1.name;
-        case ir::Operator::fmov:
-            return "fmov " + this->des.name + ", " + this->op1.name;
-        case ir::Operator::cvt_f2i:
-            return "cvt_f2i " + this->des.name + ", " + this->op1.name;
-        case ir::Operator::cvt_i2f:
-            return "cvt_i2f " + this->des.name + ", " + this->op1.name;
-        case ir::Operator::def:
-            return "def " + this->des.name + ", " + this->op1.name;
-        case ir::Operator::fdef:
-            return "fdef " + this->des.name + ", " + this->op1.name;
-        case ir::Operator::_not:
-            return "not " + this->des.name + ", " + this->op1.name;
-        default:
-            return toString(this->op) + " " + this->des.name + ", " + this->op1.name + ", " + this->op2.name;
+/**
+ * @brief 打印一般指令
+ * @return std::string
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-05-31
+ */
+std::string ir::Instruction::draw() const
+{
+    switch (this->op)
+    {
+    case ir::Operator::_return:
+        return "return " + this->op1.name;
+    case ir::Operator::_goto:
+    {
+        if (this->op1.name != "null")
+            return "if " + this->op1.name + " goto [pc, " + this->des.name + "]";
+        else
+            return "goto [pc, " + this->des.name + "]";
+    }
+    case ir::Operator::alloc:
+        return "alloc " + this->des.name + ", " + this->op1.name;
+    case ir::Operator::mov:
+        return "mov " + this->des.name + ", " + this->op1.name;
+    case ir::Operator::fmov:
+        return "fmov " + this->des.name + ", " + this->op1.name;
+    case ir::Operator::cvt_f2i:
+        return "cvt_f2i " + this->des.name + ", " + this->op1.name;
+    case ir::Operator::cvt_i2f:
+        return "cvt_i2f " + this->des.name + ", " + this->op1.name;
+    case ir::Operator::def:
+        return "def " + this->des.name + ", " + this->op1.name;
+    case ir::Operator::fdef:
+        return "fdef " + this->des.name + ", " + this->op1.name;
+    case ir::Operator::_not:
+        return "not " + this->des.name + ", " + this->op1.name;
+    default:
+        return toString(this->op) + " " + this->des.name + ", " + this->op1.name + ", " + this->op2.name;
         // case ir::Operator::add:
         //     return this->des.name + " = " + this->op1.name + " add " + this->op2.name;
         // case ir::Operator::addi:

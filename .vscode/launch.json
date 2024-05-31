@@ -7,10 +7,10 @@
             "request": "launch",
             "program": "${workspaceFolder}/bin/compiler",
             "args": [
-                "./test/testcase/function/95_float.sy",
-                "-S",
+                "./test/testcase/basic/00_main.sy",
+                "-s2",
                 "-o",
-                "./myTest/test.s"
+                "./myTest/test.ir"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

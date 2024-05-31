@@ -105,17 +105,13 @@ namespace frontend
 
     struct CompUnit : AstNode
     {
-        /**
-         * @brief constructor
-         */
+
         CompUnit(AstNode *p = nullptr);
     };
 
     struct Decl : AstNode
     {
-        /**
-         * @brief constructor
-         */
+
         Decl(AstNode *p = nullptr);
     };
 
@@ -124,9 +120,6 @@ namespace frontend
         string n;
         Type t;
 
-        /**
-         * @brief constructor
-         */
         FuncDef(AstNode *p = nullptr);
     };
 
@@ -134,9 +127,6 @@ namespace frontend
     {
         Type t;
 
-        /**
-         * @brief constructor
-         */
         ConstDecl(AstNode *p = nullptr);
     };
 
@@ -144,9 +134,6 @@ namespace frontend
     {
         Type t;
 
-        /**
-         * @brief constructor
-         */
         BType(AstNode *p = nullptr);
     };
 
@@ -154,9 +141,6 @@ namespace frontend
     {
         std::string arr_name;
 
-        /**
-         * @brief constructor
-         */
         ConstDef(AstNode *p = nullptr);
     };
 
@@ -165,9 +149,6 @@ namespace frontend
         string v;
         Type t;
 
-        /**
-         * @brief constructor
-         */
         ConstInitVal(AstNode *p = nullptr);
     };
 
@@ -175,9 +156,6 @@ namespace frontend
     {
         Type t;
 
-        /**
-         * @brief constructor
-         */
         VarDecl(AstNode *p = nullptr);
     };
 
@@ -185,9 +163,6 @@ namespace frontend
     {
         std::string arr_name;
 
-        /**
-         * @brief constructor
-         */
         VarDef(AstNode *p = nullptr);
     };
 
@@ -197,49 +172,36 @@ namespace frontend
         string v;
         Type t;
 
-        /**
-         * @brief constructor
-         */
         InitVal(AstNode *p = nullptr);
     };
 
     struct FuncType : AstNode
     {
-        /**
-         * @brief constructor
-         */
+
         FuncType(AstNode *p = nullptr);
     };
 
     struct FuncFParam : AstNode
     {
-        /**
-         * @brief constructor
-         */
+
         FuncFParam(AstNode *p = nullptr);
     };
 
     struct FuncFParams : AstNode
     {
-        /**
-         * @brief constructor
-         */
+
         FuncFParams(AstNode *p = nullptr);
     };
 
     struct Block : AstNode
     {
-        /**
-         * @brief constructor
-         */
+
         Block(AstNode *p = nullptr);
     };
 
     struct BlockItem : AstNode
     {
-        /**
-         * @brief constructor
-         */
+
         BlockItem(AstNode *p = nullptr);
     };
 
@@ -249,9 +211,6 @@ namespace frontend
         std::set<ir::Instruction *> jump_eow; // jump to end of while
         std::set<ir::Instruction *> jump_bow; // jump to begin of while
 
-        /**
-         * @brief constructor
-         */
         Stmt(AstNode *p = nullptr);
     };
 
@@ -275,9 +234,6 @@ namespace frontend
         string v;
         Type t;
 
-        /**
-         * @brief constructor
-         */
         Cond(AstNode *p = nullptr);
     };
 
@@ -344,17 +300,12 @@ namespace frontend
     {
         TokenType op;
 
-        /**
-         * @brief constructor
-         */
         UnaryOp(AstNode *p = nullptr);
     };
 
     struct FuncRParams : AstNode
     {
-        /**
-         * @brief constructor
-         */
+
         FuncRParams(AstNode *p = nullptr);
     };
 
@@ -364,9 +315,6 @@ namespace frontend
         string v;
         Type t;
 
-        /**
-         * @brief constructor
-         */
         MulExp(AstNode *p = nullptr);
     };
 
@@ -376,9 +324,6 @@ namespace frontend
         string v;
         Type t;
 
-        /**
-         * @brief constructor
-         */
         AddExp(AstNode *p = nullptr);
     };
 
@@ -388,9 +333,6 @@ namespace frontend
         string v;
         Type t = Type::Int;
 
-        /**
-         * @brief constructor
-         */
         RelExp(AstNode *p = nullptr);
     };
 
@@ -400,9 +342,6 @@ namespace frontend
         string v;
         Type t = Type::Int;
 
-        /**
-         * @brief constructor
-         */
         EqExp(AstNode *p = nullptr);
     };
 
@@ -412,9 +351,6 @@ namespace frontend
         string v;
         Type t = Type::Int;
 
-        /**
-         * @brief constructor
-         */
         LAndExp(AstNode *p = nullptr);
     };
 
@@ -424,9 +360,6 @@ namespace frontend
         string v;
         Type t = Type::Int;
 
-        /**
-         * @brief constructor
-         */
         LOrExp(AstNode *p = nullptr);
     };
 
@@ -436,9 +369,6 @@ namespace frontend
         string v;
         Type t;
 
-        /**
-         * @brief constructor
-         */
         ConstExp(AstNode *p = nullptr);
     };
 
