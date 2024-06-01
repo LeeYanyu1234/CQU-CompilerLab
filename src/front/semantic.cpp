@@ -29,7 +29,7 @@ using ir::Operator;
 #define MATCH_NODE_TYPE(node, index) root->children[index]->type == node
 
 /**
- * @brief 复制节点属性
+ * @brief 复制表达式节点属性
  * @param from 复制对象
  * @param to 粘贴对象
  * @author LeeYanyu1234 (343820386@qq.com)
@@ -169,10 +169,26 @@ ir::Program frontend::Analyzer::get_ir_program(CompUnit *root)
         symbol_table.functions[libFunc->first] = libFunc->second;
     }
 
-    symbol_table.add_scope(); // 添加一个全局作用域
+    symbol_table.add_scope(); // 添加全局作用域
 
-    analyzeCompUnit(root);
+    analyzeCompUnit(root); // 从根节点开始分析AST
 
+    //* 处理全局变量的初始化
+    //* 采用了实验指导书中的做法，创建一个global函数用于初始化
+    Function globalFunc("global", Type::null);
+    globalFunc.InstVec = g_init_inst;
+    globalFunc.addInst(new Instruction({}, {}, {}, {Operator::_return}));
+
+    program.functions.push_back(globalFunc);
+
+    for (auto func = symbol_table.functions.begin(); func != symbol_table.functions.end(); func++)
+    {
+        if (func->first == "main") // 在main函数的最前面生成对global函数的调用
+            func->second->InstVec.insert(func->second->InstVec.begin(), new ir::CallInst(Operand("global", Type::null), {}));
+        program.functions.push_back(*func->second);
+    }
+
+    symbol_table.exit_scope(); // 退出全局作用域
     return program;
 }
 
@@ -237,16 +253,23 @@ void frontend::Analyzer::analyzeFuncDef(FuncDef *root)
         GET_NODE_PTR(FuncFParams, funcFParams, 3)
         analyzeFuncFParams(funcFParams, fParams);
     }
-    Function *funcPtr = new Function(funcName, fParams, funcType); // 创建当前函数的指针
-    symbol_table.functions[funcName] = funcPtr;                    // 将函数添加到符号表
+    curFuncPtr = new Function(funcName, fParams, funcType); // 创建当前函数的指针
+    symbol_table.functions[funcName] = curFuncPtr;          // 将函数添加到符号表
     GET_NODE_PTR(Block, block, root->children.size() - 1)
-    analyzeBlock(block, funcPtr->InstVec); // 分析函数的指令，指令需要放到函数指令集内
-    symbol_table.exit_scope();             // 分析完block后退出函数作用域
+    analyzeBlock(block, curFuncPtr->InstVec); // 分析函数的指令，指令需要放到函数指令集内
+    symbol_table.exit_scope();                // 分析完block后退出函数作用域
 
-    if (funcName == "main")
-        funcPtr->addInst(new Instruction({"0", ir::Type::IntLiteral}, {}, {}, {Operator::_return}));
-    if (funcType == ir::Type::null)
-        funcPtr->addInst(new Instruction({}, {}, {}, Operator::_return));
+    if (curFuncPtr->InstVec.back()->op != Operator::_return)
+    {
+        //* 部分返回值为void的函数可能没有retrun，需要自动添加一条return;
+        if (funcType == ir::Type::null)
+            curFuncPtr->addInst(new Instruction({}, {}, {}, Operator::_return));
+        //* 部分main函数可能没有return，需要自动添加一条return 0;
+        else if (funcName == "main")
+            curFuncPtr->addInst(new Instruction({"0", ir::Type::IntLiteral}, {}, {}, {Operator::_return}));
+        else
+            assert(0 && "function no return");
+    }
 }
 
 /**
@@ -354,8 +377,116 @@ void frontend::Analyzer::analyzeStmt(Stmt *root, vector<ir::Instruction *> &buff
 {
     // TODO; lab2todo12 analyzeStmt
     GET_NODE_PTR(Term, term, 0)
-    if (term->token.type == TokenType::RETURNTK)
+    if (term->token.type == TokenType::RETURNTK) // 'return' [Exp] ';' |
     {
-        
+        if (root->children.size() == 2) // 不存在可选项[Exp]，只有'return' ';'
+        {
+            buffer.push_back(new Instruction({}, {}, {}, {Operator::_return}));
+        }
+        else if (MATCH_NODE_TYPE(NodeType::EXP, 1)) // 'return' Exp ';'
+        {
+            GET_NODE_PTR(Exp, exp, 1)
+            analyzeExp(exp, buffer); // 需要根据返回值的类型生成return语句
+            //* 但是由于返回值的类型可能不匹配，所以还需要增加一个指向当前函数的全局指针来读取当前的返回值类型
+            if (curFuncPtr->returnType == Type::Int)
+            {
+                buffer.push_back(new Instruction({exp->v, exp->t}, {}, {}, {Operator::_return}));
+            }
+        }
+        else
+            assert(0 && "function return error");
+    }
+}
+
+/**
+ * @brief 17表达式 Exp -> AddExp
+ * @param root
+ * @param buffer
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-01
+ */
+void frontend::Analyzer::analyzeExp(Exp *root, vector<ir::Instruction *> &buffer)
+{
+    // TODO; lab2todo13 analyzeExp
+    GET_NODE_PTR(AddExp, addExp, 0)
+    analyzeAddExp(addExp, buffer);
+    COPY_EXP_NODE(addExp, root)
+}
+
+/**
+ * @brief 26加减表达式 AddExp -> MulExp { ( '+' | '-' ) MulExp }
+ * @param root
+ * @param buffer
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-01
+ */
+void frontend::Analyzer::analyzeAddExp(AddExp *root, vector<ir::Instruction *> &buffer)
+{
+    // TODO; lab2todo14 analyzeAddExp
+    GET_NODE_PTR(MulExp, mulExp, 0)
+    analyzeMulExp(mulExp, buffer);
+    COPY_EXP_NODE(mulExp, root)
+}
+
+/**
+ * @brief 25乘除模表达式 MulExp -> UnaryExp { ( '*' | '/' | '%' ) UnaryExp }
+ * @param root
+ * @param buffer
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-01
+ */
+void frontend::Analyzer::analyzeMulExp(MulExp *root, vector<ir::Instruction *> &buffer)
+{
+    // TODO; lab2todo15 analyzeMulExp
+    GET_NODE_PTR(UnaryExp, unaryExp, 0)
+    analyzeUnaryExp(unaryExp, buffer);
+    COPY_EXP_NODE(unaryExp, root)
+}
+
+/**
+ * @brief 22一元表达式 UnaryExp -> PrimaryExp | Ident '(' [FuncRParams] ')' | UnaryOp UnaryExp
+ * @param root
+ * @param buffer
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-01
+ */
+void frontend::Analyzer::analyzeUnaryExp(UnaryExp *root, vector<ir::Instruction *> &buffer)
+{
+    // TODO; lab2todo16 analyzeUnaryExp
+    GET_NODE_PTR(PrimaryExp, primaryExp, 0)
+    analyzePrimaryExp(primaryExp, buffer);
+    COPY_EXP_NODE(primaryExp, root)
+}
+
+/**
+ * @brief 21基本表达式 PrimaryExp -> '(' Exp ')' | LVal | Number
+ * @param root
+ * @param buffer
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-01
+ */
+void frontend::Analyzer::analyzePrimaryExp(PrimaryExp *root, vector<ir::Instruction *> &buffer)
+{
+    // TODO; lab2todo17 analyzePrimaryExp
+    GET_NODE_PTR(Number, number, 0)
+    analyzeNumber(number, buffer);
+    COPY_EXP_NODE(number, root)
+}
+
+/**
+ * @brief 20数值 Number -> IntConst | floatConst
+ * @param root
+ * @param buffer
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-01
+ */
+void frontend::Analyzer::analyzeNumber(Number *root, vector<ir::Instruction *> &buffer)
+{
+    // TODO; lab2todo18 analyzeNumber
+    GET_NODE_PTR(Term, term, 0)
+    if (term->token.type == TokenType::INTLTR) // IntConst
+    {
+        root->t = Type::IntLiteral;  // 补充Number节点的属性为整型常量
+        root->v = term->token.value; // 补充Number节点的值为value
     }
 }

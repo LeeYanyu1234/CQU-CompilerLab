@@ -117,6 +117,7 @@ namespace frontend
         int tmp_cnt;                           // 目前临时变量的计数
         vector<ir::Instruction *> g_init_inst; // 存放中间代码
         SymbolTable symbol_table;              // 语义分析符号表
+        ir::Function *curFuncPtr = nullptr;    // 指向正在处理的函数的指针，用于获取返回值类型
 
         Analyzer();
 
@@ -136,6 +137,12 @@ namespace frontend
         void analyzeBlock(Block *, vector<ir::Instruction *> &);
         void analyzeBlockItem(BlockItem *, vector<ir::Instruction *> &);
         void analyzeStmt(Stmt *, vector<ir::Instruction *> &);
+        void analyzeExp(Exp *, vector<ir::Instruction *> &);
+        void analyzeAddExp(AddExp *, vector<ir::Instruction *> &);
+        void analyzeMulExp(MulExp *, vector<ir::Instruction *> &);
+        void analyzeUnaryExp(UnaryExp *, vector<ir::Instruction *> &);
+        void analyzePrimaryExp(PrimaryExp *, vector<ir::Instruction *> &);
+        void analyzeNumber(Number *, vector<ir::Instruction *> &);
     };
 
 } // namespace frontend
