@@ -35,9 +35,8 @@ using ir::Operator;
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-05-31
  */
-#define COPY_EXP_NODE(from, to)              \
-    to->is_computable = from->is_computable; \
-    to->v = from->v;                         \
+#define COPY_EXP_NODE(from, to) \
+    to->v = from->v;            \
     to->t = from->t;
 
 /**
@@ -53,14 +52,12 @@ using ir::Operator;
     assert(node);
 
 /**
- * @brief 分析节点
+ * @brief 转换为字符串
+ * @param value 待转换值
  * @author LeeYanyu1234 (343820386@qq.com)
- * @date 2024-05-31
+ * @date 2024-06-01
  */
-#define ANALYZE(type, index, buffer)                         \
-    auto node = dynamic_cast<type *>(root->children[index]); \
-    assert(node);                                            \
-    analyze##type(node, buffer);
+#define TOS(value) std::to_string(value)
 
 /**
  * @brief 建立运行时库
@@ -84,6 +81,10 @@ map<std::string, ir::Function *> *frontend::get_lib_funcs()
     };
     return &lib_funcs;
 }
+
+frontend::STE::STE() {}
+
+frontend::STE::STE(ir::Operand _operand, vector<int> _dimension, int _size, bool _isConst = false) : operand(_operand), dimension(_dimension), size(_size), isConst(_isConst), val(string()) {}
 
 /**
  * @brief 进入新作用域时，向符号表中压栈(作用域)
@@ -142,12 +143,18 @@ Operand frontend::SymbolTable::get_operand(string id) const
  * @brief 寻找符号表中最近的同名变量，返回对应STE
  * @param id 变量名
  * @return frontend::STE 返回对应STE
+ * @note 由于需要找到最近变量，所以需要用到rbegin，从最近添加的作用域开始遍历
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-05-31
  */
 frontend::STE frontend::SymbolTable::get_ste(string id) const
 {
-    TODO;
+    // TODO; lab2todo32 get_ste
+    for (auto scope = scope_stack.rbegin(); scope != scope_stack.rend(); scope++)
+    {
+        if (scope->table.find(id) != scope->table.end())
+            return scope->table.find(id)->second;
+    }
 }
 
 frontend::Analyzer::Analyzer() : tmp_cnt(0), symbol_table() {}
@@ -174,6 +181,16 @@ ir::Program frontend::Analyzer::get_ir_program(CompUnit *root)
     symbol_table.add_scope(); // 添加全局作用域
 
     analyzeCompUnit(root); // 从根节点开始分析AST
+
+    // 将全局变量添加到globalVal中，Scp0中的变量即为全局变量
+    for (auto it = symbol_table.scope_stack[0].table.begin(); it != symbol_table.scope_stack[0].table.end(); it++)
+    {
+        auto &ste = it->second;
+        if (ste.dimension.size())
+            program.globalVal.push_back({ste.operand, ste.size});
+        else
+            program.globalVal.push_back({ste.operand, 0});
+    }
 
     //* 处理全局变量的初始化
     //* 采用了实验指导书中的做法，创建一个global函数用于初始化
@@ -434,9 +451,154 @@ void frontend::Analyzer::analyzeExp(Exp *root, vector<ir::Instruction *> &buffer
 void frontend::Analyzer::analyzeAddExp(AddExp *root, vector<ir::Instruction *> &buffer)
 {
     // TODO; lab2todo14 analyzeAddExp
-    GET_NODE_PTR(MulExp, mulExp, 0)
-    analyzeMulExp(mulExp, buffer);
-    COPY_EXP_NODE(mulExp, root)
+    GET_NODE_PTR(MulExp, mulExp1, 0)
+    analyzeMulExp(mulExp1, buffer);
+
+    int idx = -1;
+    //* 如果表达式中有常量
+    if (mulExp1->t == Type::IntLiteral || mulExp1->t == Type::FloatLiteral)
+    {
+        for (int i = 2; i < root->children.size(); i += 2)
+        {
+            vector<Instruction *> mulInst;
+            GET_NODE_PTR(Term, term, i - 1)
+            GET_NODE_PTR(MulExp, mulExp2, i)
+            analyzeMulExp(mulExp2, mulInst);
+            if (mulExp2->t == Type::IntLiteral || mulExp2->t == Type::FloatLiteral)
+            {
+                if (mulExp1->t == Type::IntLiteral && mulExp2->t == Type::IntLiteral)
+                {
+                    if (term->token.type == TokenType::PLUS)
+                    {
+                        mulExp1->v = TOS(std::stoi(mulExp1->v) + std::stoi(mulExp2->v));
+                    }
+                    else if (term->token.type == TokenType::MINU)
+                    {
+                        mulExp1->v = TOS(std::stoi(mulExp1->v) - std::stoi(mulExp2->v));
+                    }
+                    else
+                        assert(0 && "AddExp op error");
+                }
+                else if (mulExp1->t == Type::IntLiteral && mulExp2->t == Type::FloatLiteral)
+                {
+                    mulExp1->t = Type::FloatLiteral;
+                    if (term->token.type == TokenType::PLUS)
+                    {
+                        mulExp1->v = TOS(std::stoi(mulExp1->v) + std::stof(mulExp2->v));
+                    }
+                    else if (term->token.type == TokenType::MINU)
+                    {
+                        mulExp1->v = TOS(std::stoi(mulExp1->v) - std::stof(mulExp2->v));
+                    }
+                    else
+                        assert(0 && "AddExp op error");
+                }
+                else if (mulExp1->t == Type::FloatLiteral && mulExp2->t == Type::IntLiteral)
+                {
+                    if (term->token.type == TokenType::PLUS)
+                    {
+                        mulExp1->v = TOS(std::stof(mulExp1->v) + std::stoi(mulExp2->v));
+                    }
+                    else if (term->token.type == TokenType::MINU)
+                    {
+                        mulExp1->v = TOS(std::stof(mulExp1->v) - std::stoi(mulExp2->v));
+                    }
+                    else
+                        assert(0 && "AddExp op error");
+                }
+                else
+                {
+                    if (term->token.type == TokenType::PLUS)
+                    {
+                        mulExp1->v = TOS(std::stof(mulExp1->v) + std::stof(mulExp2->v));
+                    }
+                    else if (term->token.type == TokenType::MINU)
+                    {
+                        mulExp1->v = TOS(std::stof(mulExp1->v) - std::stof(mulExp2->v));
+                    }
+                    else
+                        assert(0 && "AddExp op error");
+                }
+            }
+            else
+            {
+                idx = i;
+                break;
+            }
+        }
+    }
+
+    if (mulExp1->t == Type::IntLiteral || mulExp1->t == Type::FloatLiteral && idx == -1) // 如果表达式只有常量
+    {
+        COPY_EXP_NODE(mulExp1, root)
+    }
+    else
+    {
+        Operand op1;
+        if (idx == -1) // 表达式有常量
+        {
+            op1.name = mulExp1->v;
+            op1.type = mulExp1->t;
+            idx = 2;
+        }
+        else
+        {
+            if (mulExp1->t == Type::IntLiteral)
+            {
+                op1 = IntLiteral2Int(mulExp1->v, buffer);
+            }
+            else
+            {
+                op1 = FloatLiteral2Float(mulExp1->v, buffer);
+            }
+        }
+
+        if (root->children.size() > 1)
+        {
+            if ((op1.type == Type::Int || op1.type == Type::Float) && op1.name.find('_') != op1.name.npos)
+            {
+                auto tmp = Operand(getTmp(), op1.type == Type::Int ? Type::Int : Type::Float);
+                Operator cal = (op1.type == Type::Int) ? Operator::mov : Operator::fmov;
+                buffer.push_back(new Instruction(op1, {}, tmp, cal));
+                std::swap(op1, tmp);
+            }
+            for (int i = idx; i < root->children.size(); i += 2)
+            {
+                GET_NODE_PTR(Term, term, i - 1)
+                GET_NODE_PTR(MulExp, mulExp2, i)
+                analyzeMulExp(mulExp2, buffer);
+                Operand op2;
+                if (mulExp2->t == Type::IntLiteral)
+                {
+                    op2 = IntLiteral2Int(mulExp2->v, buffer);
+                }
+                else if (mulExp2->t == Type::FloatLiteral)
+                {
+                    op2 = FloatLiteral2Float(mulExp2->v, buffer);
+                }
+                else
+                {
+                    op2 = Operand(mulExp2->v, mulExp2->t);
+                }
+
+                if (term->token.type == TokenType::PLUS)
+                {
+                    if (op1.type == Type::Int && op2.type == Type::Int)
+                    {
+                        buffer.push_back(new Instruction(op1, op2, op1, Operator::add));
+                    }
+                }
+                else if (term->token.type == TokenType::MINU)
+                {
+                }
+                else
+                    assert(0 && "AddExp op error");
+            }
+        }
+
+        root->t = op1.type;
+        root->v = op1.name;
+    }
 }
 
 /**
@@ -464,9 +626,12 @@ void frontend::Analyzer::analyzeMulExp(MulExp *root, vector<ir::Instruction *> &
 void frontend::Analyzer::analyzeUnaryExp(UnaryExp *root, vector<ir::Instruction *> &buffer)
 {
     // TODO; lab2todo16 analyzeUnaryExp
-    GET_NODE_PTR(PrimaryExp, primaryExp, 0)
-    analyzePrimaryExp(primaryExp, buffer);
-    COPY_EXP_NODE(primaryExp, root)
+    if (MATCH_NODE_TYPE(NodeType::PRIMARYEXP, 0))
+    {
+        GET_NODE_PTR(PrimaryExp, primaryExp, 0)
+        analyzePrimaryExp(primaryExp, buffer);
+        COPY_EXP_NODE(primaryExp, root)
+    }
 }
 
 /**
@@ -479,9 +644,30 @@ void frontend::Analyzer::analyzeUnaryExp(UnaryExp *root, vector<ir::Instruction 
 void frontend::Analyzer::analyzePrimaryExp(PrimaryExp *root, vector<ir::Instruction *> &buffer)
 {
     // TODO; lab2todo17 analyzePrimaryExp
-    GET_NODE_PTR(Number, number, 0)
-    analyzeNumber(number, buffer);
-    COPY_EXP_NODE(number, root)
+    if (root->children.size() > 1) // '(' Exp ')'
+    {
+    }
+    else if (MATCH_NODE_TYPE(NodeType::LVAL, 0))
+    {
+        GET_NODE_PTR(LVal, lVal, 0)
+        analyzeLVal(lVal, buffer);
+
+        if (lVal->t == Type::IntPtr || lVal->t == Type::FloatPtr) // 如果左值是数组，返回的是指针
+        {
+        }
+        else // 如果左值是变量，返回的是变量名
+        {
+            COPY_EXP_NODE(lVal, root)
+        }
+    }
+    else if (MATCH_NODE_TYPE(NodeType::NUMBER, 0))
+    {
+        GET_NODE_PTR(Number, number, 0)
+        analyzeNumber(number, buffer);
+        COPY_EXP_NODE(number, root)
+    }
+    else
+        assert(0 && "analyzePrimaryExp error");
 }
 
 /**
@@ -552,7 +738,197 @@ void frontend::Analyzer::analyzeVarDef(VarDef *root, vector<ir::Instruction *> &
 {
     // TODO; lab2todo23 analyzeVarDef
     GET_NODE_PTR(Term, term, 0)
+    analyzeTerm(term);
     root->arr_name = symbol_table.get_scoped_name(term->v); // 获取变量名并重命名
 
-    
+    vector<int> dimension; // 存储每一维变量的大小
+    int size;              // 变量空间大小
+
+    //? 数组的size一定>=1，如果是变量size必须设置为0
+    if (MATCH_NODE_TYPE(NodeType::CONSTEXP, 2)) // 如果是数组，初始大小设置为1
+    {
+        size = 1;
+        //* 解析每一维的大小，并计算总大小
+        for (int i = 2; i < root->children.size(); i += 3) // { '[' ConstExp ']' }
+        {
+            if (MATCH_NODE_TYPE(NodeType::CONSTEXP, i))
+            {
+                GET_NODE_PTR(ConstExp, constExp, i)
+                analyzeConstExp(constExp);
+                assert(constExp->t == Type::IntLiteral && std::stoi(constExp->v) >= 0); // constExp一定是非负整数
+                dimension.push_back(std::stoi(constExp->v));
+                size *= std::stoi(constExp->v);
+            }
+            else
+                break;
+        }
+    }
+    else // 如果只是变量，大小设置为0
+        size = 0;
+
+    if (MATCH_NODE_TYPE(NodeType::INITVAL, root->children.size() - 1)) // [ '=' InitVal ]
+    {
+        GET_NODE_PTR(InitVal, initVal, root->children.size() - 1)
+        initVal->v = root->arr_name;
+        if (type == Type::Int) // 变量类型为整型
+        {
+            initVal->t = Type::Int;
+            if (size == 0) // 如果是变量，符号表中为整型变量
+            {
+                symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::Int), dimension, size);
+            }
+            else // 如果是数组，符号表中为整型指针
+            {
+                symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::IntPtr), dimension, size);
+                if (symbol_table.scope_stack.size() > 1) // 如果不是全局变量，需要添加一条alloc指令分配空间
+                    buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::IntPtr}, {Operator::alloc}));
+            }
+        }
+        else if (type == Type::Float)
+        {
+            initVal->t = Type::Float;
+            if (size == 0) // 如果是变量，符号表中为浮点型变量
+            {
+                symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::Float), dimension, size);
+            }
+            else // 如果是数组，符号表中为浮点型指针
+            {
+                symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::FloatPtr), dimension, size);
+                if (symbol_table.scope_stack.size() > 1) // 如果不是全局变量，需要添加一条alloc指令分配空间
+                    buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::FloatPtr}, {Operator::alloc}));
+            }
+        }
+        else
+            assert(0 && "InitVal type error");
+
+        analyzeInitVal(initVal, buffer, size, 0, 0, dimension);
+    }
+}
+
+/**
+ * @brief 31常量表达式 ConstExp -> AddExp
+ * @param root
+ * @note 根据SysY语言定义，每一个ConstExp都必须在编译时能求值到非负整数
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-01
+ */
+void frontend::Analyzer::analyzeConstExp(ConstExp *root)
+{
+    // TODO; lab2todo25 analyzeConstExp
+    GET_NODE_PTR(AddExp, addExp, 0)
+    vector<Instruction *> tmp;
+    analyzeAddExp(addExp, tmp);
+    COPY_EXP_NODE(addExp, root)
+}
+
+/**
+ * @brief 9 变量初值 InitVal -> Exp | '{' [ InitVal { ',' InitVal } ] '}'
+ * @param root
+ * @param buffer
+ * @param size
+ * @param cur
+ * @param offset
+ * @param dimention
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-01
+ */
+void frontend::Analyzer::analyzeInitVal(InitVal *root, vector<ir::Instruction *> &buffer, int size, int cur, int offset, vector<int> &dimention)
+{
+    // TODO; lab2todo27 analyzeInitVal
+    if (MATCH_NODE_TYPE(NodeType::EXP, 0)) // Exp
+    {
+        GET_NODE_PTR(Exp, exp, 0)
+        analyzeExp(exp, buffer);
+
+        if (root->t == Type::Int && exp->t == Type::IntLiteral)
+        {
+            if (symbol_table.scope_stack.size() > 1) // 不是全局变量，直接def即可
+                buffer.push_back(new Instruction({exp->v, exp->t}, {}, {root->v, Type::Int}, {Operator::def}));
+            else // 是全局变量，由于已经在静态区域申请了空间，所以需要通过mov指令初始化
+            {
+                auto tmp = IntLiteral2Int(exp->v, buffer);
+                buffer.push_back(new Instruction(tmp, {}, Operand(root->v, Type::Int), Operator::mov));
+            }
+        }
+    }
+}
+
+/**
+ * @brief 19左值表达式 LVal -> Ident { '[' Exp ']' }
+ * @param root
+ * @param buffer
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-01
+ */
+void frontend::Analyzer::analyzeLVal(LVal *root, vector<ir::Instruction *> buffer)
+{
+    // TODO; lab2todo30 analyzeLVal
+    GET_NODE_PTR(Term, valName, 0); // valName->v为标识符名称
+    analyzeTerm(valName);
+    auto ste = symbol_table.get_ste(valName->v); // 获取当前左值的符号表项
+
+    //* 如果是常量直接进行值替换
+    if (ste.isConst && (ste.operand.type == Type::Int || ste.operand.type == Type::Float))
+    {
+        root->v = ste.val;
+        root->t = (ste.operand.type == Type::Int) ? Type::IntLiteral : Type::FloatLiteral;
+        root->isPtr = false;
+    }
+    else //* 变量或数组
+    {
+        root->v = ste.operand.name; // 复制变量名/数组名
+        root->t = ste.operand.type; // 复制变量类型/数组类型
+
+        if (ste.size == 0) // 如果size大小为0，说明是变量
+        {
+            root->isPtr = false;
+        }
+        else // size>0，说明是数组
+        {
+        }
+    }
+}
+
+/**
+ * @brief 整型常量转换为整型变量
+ * @param val
+ * @param buffer
+ * @return ir::Operand
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-01
+ */
+ir::Operand frontend::Analyzer::IntLiteral2Int(string val, vector<ir::Instruction *> &buffer)
+{
+    // TODO; lab2todo28 IntLiteral2Int
+    Operand opd = {getTmp(), Type::Int};
+    buffer.push_back(new Instruction({val, Type::IntLiteral}, {}, {opd}, {Operator::def}));
+    return opd;
+}
+
+/**
+ * @brief 浮点型常量转换为浮点型变量
+ * @param val
+ * @param buffer
+ * @return ir::Operand
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-01
+ */
+ir::Operand frontend::Analyzer::FloatLiteral2Float(string val, vector<ir::Instruction *> &buffer)
+{
+    // TODO; lab2todo33 FloatLiteral2Float
+    Operand opd = {getTmp(), Type::Float};
+    buffer.push_back(new Instruction({val, Type::FloatLiteral}, {}, {opd}, {Operator::fdef}));
+    return opd;
+}
+
+/**
+ * @brief 创建新的临时变量
+ * @return string 变量名
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-01
+ */
+std::string frontend::Analyzer::getTmp()
+{
+    // TODO; lab2todo29 getTmp
+    return "t" + std::to_string(tmp_cnt++);
 }

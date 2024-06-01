@@ -36,6 +36,13 @@ namespace frontend
     {
         ir::Operand operand;   // 操作数=名称+类型
         vector<int> dimension; // 各个维度的大小
+        // TODO; lab2todo26 struct STE
+        int size;     // 总大小
+        bool isConst; // 标记是否为常量
+        string val;   // 常量数值
+
+        STE();
+        STE(ir::Operand, vector<int>, int, bool);
     };
 
     /**
@@ -61,7 +68,7 @@ namespace frontend
                             ** e：else产生的新作用域
                             ** w：while产生的新作用域
                             */
-        map_str_ste table; // 存放符号的表
+        map_str_ste table; // 单个作用域存放符号的表
     };
 
     /**
@@ -146,6 +153,13 @@ namespace frontend
         void analyzeVarDecl(VarDecl *, vector<ir::Instruction *> &);
         void analyzeBType(BType *);
         void analyzeVarDef(VarDef *, vector<ir::Instruction *> &, ir::Type);
+        void analyzeConstExp(ConstExp *);
+        void analyzeInitVal(InitVal *, vector<ir::Instruction *> &, int size, int cur, int offset, vector<int> &dim);
+        void analyzeLVal(LVal *, vector<ir::Instruction *>);
+
+        ir::Operand IntLiteral2Int(string, vector<ir::Instruction *> &);
+        ir::Operand FloatLiteral2Float(string, vector<ir::Instruction *> &);
+        string getTmp();
     };
 
 } // namespace frontend

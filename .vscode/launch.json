@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/bin/compiler",
             "args": [
-                "./test/testcase/basic/00_main.sy",
+                "./test/testcase/basic/03_arr_defn2.sy",
                 "-s2",
                 "-o",
                 "./myTest/test.ir"

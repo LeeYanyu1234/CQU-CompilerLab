@@ -171,8 +171,8 @@ namespace frontend
     struct InitVal : AstNode
     {
         bool is_computable = false;
-        string v;
-        Type t;
+        string v; // 向下传递变量名
+        Type t;   // 向下传递变量类型
 
         InitVal(AstNode *p = nullptr);
     };
@@ -248,10 +248,12 @@ namespace frontend
      */
     struct LVal : AstNode
     {
+        // TODO; lab2todo31 struct LVal
         bool is_computable = false;
-        string v; // 左值表达式的值
-        Type t;   // 左值表达式的类型
-        int i;    // array index, legal if t is IntPtr or FloatPtr
+        string v;      // 左值表达式的值
+        Type t;        // 左值表达式的类型
+        bool isPtr;    // 左值是否是指针
+        string offset; // array index, legal if t is IntPtr or FloatPtr
 
         LVal(AstNode *p = nullptr);
     };
@@ -369,7 +371,7 @@ namespace frontend
     struct ConstExp : AstNode
     {
         bool is_computable = true;
-        string v;
+        string v; // 数值，一定是非负整数
         Type t;
 
         ConstExp(AstNode *p = nullptr);
