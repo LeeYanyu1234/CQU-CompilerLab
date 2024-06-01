@@ -99,6 +99,8 @@ namespace frontend
      */
     struct Term : AstNode
     {
+        // TODO; lab2todo21 struct Term
+        string v;    // 传递字符串值
         Token token; // 终结点token
         Term(Token t, AstNode *p = nullptr);
     };
@@ -132,7 +134,7 @@ namespace frontend
 
     struct BType : AstNode
     {
-        Type t;
+        Type t; // 用于传递标识符类型
 
         BType(AstNode *p = nullptr);
     };
@@ -161,7 +163,7 @@ namespace frontend
 
     struct VarDef : AstNode
     {
-        std::string arr_name;
+        std::string arr_name; // 变量名
 
         VarDef(AstNode *p = nullptr);
     };
@@ -177,7 +179,8 @@ namespace frontend
 
     struct FuncType : AstNode
     {
-
+        // TODO; lab2todo20 struct FuncType
+        Type t; // 用于传递函数返回值类型
         FuncType(AstNode *p = nullptr);
     };
 

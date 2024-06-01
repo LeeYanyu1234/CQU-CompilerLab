@@ -131,8 +131,8 @@ namespace frontend
         void analyzeCompUnit(CompUnit *);
         void analyzeDecl(Decl *, vector<ir::Instruction *> &);
         void analyzeFuncDef(FuncDef *);
-        ir::Type analyzeFuncType(FuncType *);
-        std::string analyzeTerm(Term *);
+        void analyzeFuncType(FuncType *);
+        void analyzeTerm(Term *);
         void analyzeFuncFParams(FuncFParams *, vector<ir::Operand> &);
         void analyzeBlock(Block *, vector<ir::Instruction *> &);
         void analyzeBlockItem(BlockItem *, vector<ir::Instruction *> &);
@@ -143,6 +143,9 @@ namespace frontend
         void analyzeUnaryExp(UnaryExp *, vector<ir::Instruction *> &);
         void analyzePrimaryExp(PrimaryExp *, vector<ir::Instruction *> &);
         void analyzeNumber(Number *, vector<ir::Instruction *> &);
+        void analyzeVarDecl(VarDecl *, vector<ir::Instruction *> &);
+        void analyzeBType(BType *);
+        void analyzeVarDef(VarDef *, vector<ir::Instruction *> &, ir::Type);
     };
 
 } // namespace frontend

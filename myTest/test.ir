@@ -1,0 +1,40 @@
+void global()
+	0: return null
+end
+
+int getarray(int* arr)
+end
+
+int getch()
+end
+
+int getfarray(float* arr)
+end
+
+float getfloat()
+end
+
+int getint()
+end
+
+int main()
+	0: call null, global()
+	1: return 3
+end
+
+void putarray(int n,int* arr)
+end
+
+void putch(int i)
+end
+
+void putfarray(int n,float* arr)
+end
+
+void putfloat(float f)
+end
+
+void putint(int i)
+end
+
+GVT:

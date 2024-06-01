@@ -116,12 +116,14 @@ void frontend::SymbolTable::exit_scope()
  * @brief 变量重命名
  * @param id 变量原名
  * @return string 重命名后的名称
+ * @note 为变量加上当前作用域的后缀，例如id_Scp0
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-05-31
  */
 string frontend::SymbolTable::get_scoped_name(string id) const
 {
-    TODO;
+    // TODO; lab2todo24 get_scoped_name
+    return id + "_" + scope_stack.back().name;
 }
 
 /**
@@ -203,7 +205,8 @@ void frontend::Analyzer::analyzeCompUnit(CompUnit *root)
     // TODO; lab2todo3 analyzeCompUnit
     if (MATCH_NODE_TYPE(NodeType::DECL, 0)) // Decl
     {
-        ANALYZE(Decl, 0, g_init_inst)
+        GET_NODE_PTR(Decl, decl, 0)
+        analyzeDecl(decl, g_init_inst);
     }
     else if (MATCH_NODE_TYPE(NodeType::FUNCDEF, 0)) // FuncDef
     {
@@ -230,6 +233,16 @@ void frontend::Analyzer::analyzeCompUnit(CompUnit *root)
 void frontend::Analyzer::analyzeDecl(Decl *root, vector<ir::Instruction *> &buffer)
 {
     // TODO; lab2todo5 analyzeDecl
+    if (MATCH_NODE_TYPE(NodeType::CONSTDECL, 0))
+    {
+    }
+    else if (MATCH_NODE_TYPE(NodeType::VARDECL, 0))
+    {
+        GET_NODE_PTR(VarDecl, varDecl, 0)
+        analyzeVarDecl(varDecl, buffer);
+    }
+    else
+        assert(0 && "analyzeDecl error");
 }
 
 /**
@@ -241,11 +254,10 @@ void frontend::Analyzer::analyzeDecl(Decl *root, vector<ir::Instruction *> &buff
 void frontend::Analyzer::analyzeFuncDef(FuncDef *root)
 {
     // TODO; lab2todo6 analyzeFuncDef
-    GET_NODE_PTR(FuncType, type, 0)
-    auto funcType = analyzeFuncType(type); // FuncType 函数返回值类型
-    GET_NODE_PTR(Term, term, 1)
-    auto funcName = analyzeTerm(term); // Indent 函数名
-
+    GET_NODE_PTR(FuncType, funcType, 0)
+    analyzeFuncType(funcType); // FuncType->t 函数返回值类型
+    GET_NODE_PTR(Term, funcName, 1)
+    analyzeTerm(funcName);    // Indent 函数名
     symbol_table.add_scope(); // 从函数形参开始进入函数作用域
     vector<ir::Operand> fParams;
     if (MATCH_NODE_TYPE(NodeType::FUNCFPARAMS, 3)) // 如果函数有形参
@@ -253,8 +265,8 @@ void frontend::Analyzer::analyzeFuncDef(FuncDef *root)
         GET_NODE_PTR(FuncFParams, funcFParams, 3)
         analyzeFuncFParams(funcFParams, fParams);
     }
-    curFuncPtr = new Function(funcName, fParams, funcType); // 创建当前函数的指针
-    symbol_table.functions[funcName] = curFuncPtr;          // 将函数添加到符号表
+    curFuncPtr = new Function(funcName->v, fParams, funcType->t); // 创建当前函数的指针
+    symbol_table.functions[funcName->v] = curFuncPtr;             // 将函数添加到符号表
     GET_NODE_PTR(Block, block, root->children.size() - 1)
     analyzeBlock(block, curFuncPtr->InstVec); // 分析函数的指令，指令需要放到函数指令集内
     symbol_table.exit_scope();                // 分析完block后退出函数作用域
@@ -262,10 +274,10 @@ void frontend::Analyzer::analyzeFuncDef(FuncDef *root)
     if (curFuncPtr->InstVec.back()->op != Operator::_return)
     {
         //* 部分返回值为void的函数可能没有retrun，需要自动添加一条return;
-        if (funcType == ir::Type::null)
+        if (funcType->t == ir::Type::null)
             curFuncPtr->addInst(new Instruction({}, {}, {}, Operator::_return));
         //* 部分main函数可能没有return，需要自动添加一条return 0;
-        else if (funcName == "main")
+        else if (funcName->v == "main")
             curFuncPtr->addInst(new Instruction({"0", ir::Type::IntLiteral}, {}, {}, {Operator::_return}));
         else
             assert(0 && "function no return");
@@ -274,35 +286,34 @@ void frontend::Analyzer::analyzeFuncDef(FuncDef *root)
 
 /**
  * @brief 11函数类型 FuncType -> 'void' | 'int' | 'float'
- * @return ir::Type
+ * @param root
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-05-31
  */
-ir::Type frontend::Analyzer::analyzeFuncType(FuncType *root)
+void frontend::Analyzer::analyzeFuncType(FuncType *root)
 {
     // TODO; lab2todo7 analyzeFuncType
     GET_NODE_PTR(Term, term, 0)
     if (term->token.type == TokenType::VOIDTK)
-        return Type::null;
+        root->t = Type::null;
     else if (term->token.type == TokenType::INTTK)
-        return Type::Int;
+        root->t = Type::Int;
     else if (term->token.type == TokenType::FLOATTK)
-        return Type::Float;
+        root->t = Type::Float;
     else
         assert(0 && "analyzeFuncType error");
 }
 
 /**
- * @brief 返回标识符名称
+ * @brief 传递标识符名称
  * @param root
- * @return std::string
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-05-31
  */
-std::string frontend::Analyzer::analyzeTerm(Term *root)
+void frontend::Analyzer::analyzeTerm(Term *root)
 {
     // TODO; lab2todo8 analyzeTerm
-    return root->token.value;
+    root->v = root->token.value;
 }
 
 /**
@@ -489,4 +500,59 @@ void frontend::Analyzer::analyzeNumber(Number *root, vector<ir::Instruction *> &
         root->t = Type::IntLiteral;  // 补充Number节点的属性为整型常量
         root->v = term->token.value; // 补充Number节点的值为value
     }
+}
+
+/**
+ * @brief 7 变量声明 VarDecl -> BType VarDef { ',' VarDef } ';'
+ * @param root
+ * @param buffer
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-01
+ */
+void frontend::Analyzer::analyzeVarDecl(VarDecl *root, vector<ir::Instruction *> &buffer)
+{
+    // TODO; lab2todo19 analyzeVarDecl
+    GET_NODE_PTR(BType, bType, 0)
+    analyzeBType(bType);
+    root->t = bType->t; // 标识符类型
+    for (int i = 1; i < root->children.size(); i += 2)
+    {
+        GET_NODE_PTR(VarDef, varDef, i)
+        analyzeVarDef(varDef, buffer, root->t);
+    }
+}
+
+/**
+ * @brief 4 基本类型 BType -> 'int' | 'float'
+ * @param root
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-01
+ */
+void frontend::Analyzer::analyzeBType(BType *root)
+{
+    // TODO; lab2todo22 analyzeBType
+    GET_NODE_PTR(Term, term, 0)
+    if (term->token.type == TokenType::INTTK)
+        root->t = Type::Int;
+    else if (term->token.type == TokenType::FLOATTK)
+        root->t = Type::Float;
+    else
+        assert(0 && "analyzeBType error");
+}
+
+/**
+ * @brief 8 变量定义 VarDef -> Ident { '[' ConstExp ']' } [ '=' InitVal ]
+ * @param root
+ * @param buffer
+ * @param type 标识符类型
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-01
+ */
+void frontend::Analyzer::analyzeVarDef(VarDef *root, vector<ir::Instruction *> &buffer, ir::Type type)
+{
+    // TODO; lab2todo23 analyzeVarDef
+    GET_NODE_PTR(Term, term, 0)
+    root->arr_name = symbol_table.get_scoped_name(term->v); // 获取变量名并重命名
+
+    
 }
