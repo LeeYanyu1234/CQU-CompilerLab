@@ -404,25 +404,65 @@ void frontend::Analyzer::analyzeBlockItem(BlockItem *root, vector<ir::Instructio
 void frontend::Analyzer::analyzeStmt(Stmt *root, vector<ir::Instruction *> &buffer)
 {
     // TODO; lab2todo12 analyzeStmt
-    GET_NODE_PTR(Term, term, 0)
-    if (term->token.type == TokenType::RETURNTK) // 'return' [Exp] ';' |
+    if (MATCH_NODE_TYPE(NodeType::LVAL, 0)) // LVal '=' Exp ';'
     {
-        if (root->children.size() == 2) // 不存在可选项[Exp]，只有'return' ';'
+        GET_NODE_PTR(LVal, lVal, 0)
+        analyzeLVal(lVal, buffer);
+        GET_NODE_PTR(Exp, exp, 2)
+        analyzeExp(exp, buffer);
+
+        Operand lValVar = Operand(lVal->v, lVal->t);
+        Operand rValVar;
+        if (exp->t == Type::IntLiteral)
         {
-            buffer.push_back(new Instruction({}, {}, {}, {Operator::_return}));
+            rValVar = IntLiteral2Int(exp->v, buffer);
         }
-        else if (MATCH_NODE_TYPE(NodeType::EXP, 1)) // 'return' Exp ';'
+        else if (exp->t == Type::FloatLiteral)
         {
-            GET_NODE_PTR(Exp, exp, 1)
-            analyzeExp(exp, buffer); // 需要根据返回值的类型生成return语句
-            //* 但是由于返回值的类型可能不匹配，所以还需要增加一个指向当前函数的全局指针来读取当前的返回值类型
-            if (curFuncPtr->returnType == Type::Int)
-            {
-                buffer.push_back(new Instruction({exp->v, exp->t}, {}, {}, {Operator::_return}));
-            }
+            rValVar = FloatLiteral2Float(exp->v, buffer);
         }
         else
-            assert(0 && "function return error");
+        {
+            rValVar = Operand(exp->v, exp->t);
+        }
+
+        if (lValVar.type == Type::Int || lValVar.type == Type::Float) // 左值是变量，进行变量赋值
+        {
+            if (lValVar.type == Type::Int && rValVar.type == Type::Int) // 左值和右值的变量类型都为整型
+            {
+                buffer.push_back(new Instruction({rValVar}, {}, {lValVar}, {Operator::mov}));
+            }
+        }
+        else if (lValVar.type == Type::IntPtr || lValVar.type == Type::FloatPtr) // 左值是数组，进行数组赋值
+        {
+        }
+        else
+            assert(0 && "lVal type error");
+
+        int a = 1;
+    }
+    else
+    {
+        GET_NODE_PTR(Term, term, 0)
+        if (term->token.type == TokenType::RETURNTK) // 'return' [Exp] ';' |
+        {
+            if (root->children.size() == 2) // 不存在可选项[Exp]，只有'return' ';'
+            {
+                buffer.push_back(new Instruction({}, {}, {}, {Operator::_return}));
+            }
+            else if (MATCH_NODE_TYPE(NodeType::EXP, 1)) // 'return' Exp ';'
+            {
+                GET_NODE_PTR(Exp, exp, 1)
+                analyzeExp(exp, buffer); // 需要根据返回值的类型生成return语句
+                //* 由于返回值的类型可能不匹配，所以还需要增加一个指向当前函数的全局指针来读取当前的返回值类型
+                if (curFuncPtr->returnType == Type::Int)
+                {
+                    buffer.push_back(new Instruction({exp->v, exp->t}, {}, {}, {Operator::_return}));
+                }
+            }
+            else
+                assert(0 && "function return error");
+        }
     }
 }
 
@@ -744,8 +784,10 @@ void frontend::Analyzer::analyzeVarDef(VarDef *root, vector<ir::Instruction *> &
     vector<int> dimension; // 存储每一维变量的大小
     int size;              // 变量空间大小
 
-    //? 数组的size一定>=1，如果是变量size必须设置为0
-    if (MATCH_NODE_TYPE(NodeType::CONSTEXP, 2)) // 如果是数组，初始大小设置为1
+    //* 数组的size一定>=1，如果是变量size必须设置为0
+    //? 这里不能直接匹配idx=2的节点，不然会出现段错误
+    //? 如果遇到int a;这种情况，会出现越界访问，所以需要先判断节点的数目
+    if (root->children.size() > 1 && MATCH_NODE_TYPE(NodeType::CONSTEXP, 2)) // 如果是数组，初始size设置为1
     {
         size = 1;
         //* 解析每一维的大小，并计算总大小
@@ -766,6 +808,7 @@ void frontend::Analyzer::analyzeVarDef(VarDef *root, vector<ir::Instruction *> &
     else // 如果只是变量，大小设置为0
         size = 0;
 
+    //* 定义一个变量需要做两件事，一是为其分配空间，二是将其插入符号表中
     if (MATCH_NODE_TYPE(NodeType::INITVAL, root->children.size() - 1)) // [ '=' InitVal ]
     {
         GET_NODE_PTR(InitVal, initVal, root->children.size() - 1)
@@ -802,6 +845,44 @@ void frontend::Analyzer::analyzeVarDef(VarDef *root, vector<ir::Instruction *> &
             assert(0 && "InitVal type error");
 
         analyzeInitVal(initVal, buffer, size, 0, 0, dimension);
+    }
+    else // 不包含可选项[ '=' InitVal ]，也就是说只声明，没有初始化
+    {
+        //* 还是需要将变量插入符号表中
+        if (type == Type::Int) // 变量类型为整型
+        {
+            if (size == 0) // 如果是变量，符号表中为整型变量
+            {
+                symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::Int), dimension, size); // 插入符号表
+                //* 如果不是全局变量，那么这个变量还会被初始化为一个随机值
+                if (symbol_table.scope_stack.size() > 1)
+                    buffer.push_back(new Instruction({"473289", Type::IntLiteral}, {}, {root->arr_name, Type::Int}, {Operator::def}));
+            }
+            else // 如果是数组，符号表中为整型指针
+            {
+                symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::IntPtr), dimension, size);
+                if (symbol_table.scope_stack.size() > 1) // 如果不是全局变量，需要添加一条alloc指令分配空间
+                    buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::IntPtr}, {Operator::alloc}));
+            }
+        }
+        else if (type == Type::Float)
+        {
+            if (size == 0) // 如果是变量，符号表中为浮点型变量
+            {
+                symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::Float), dimension, size);
+                //* 如果不是全局变量，那么这个变量还会被初始化为一个随机值
+                if (symbol_table.scope_stack.size() > 1)
+                    buffer.push_back(new Instruction({"3.1415926", Type::FloatLiteral}, {}, {root->arr_name, Type::Float}, {Operator::fdef}));
+            }
+            else // 如果是数组，符号表中为浮点型指针
+            {
+                symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::FloatPtr), dimension, size);
+                if (symbol_table.scope_stack.size() > 1) // 如果不是全局变量，需要添加一条alloc指令分配空间
+                    buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::FloatPtr}, {Operator::alloc}));
+            }
+        }
+        else
+            assert(0 && "InitVal type error");
     }
 }
 

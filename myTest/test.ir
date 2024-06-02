@@ -19,7 +19,18 @@ end
 
 int main()
 	0: call null, global()
-	1: return 0
+	1: def a_Scp1, 473289
+	2: def b0_Scp1, 473289
+	3: def _c_Scp1, 473289
+	4: def t0, 1
+	5: mov a_Scp1, t0
+	6: def t1, 2
+	7: mov b0_Scp1, t1
+	8: def t2, 3
+	9: mov _c_Scp1, t2
+	10: mov t3, b0_Scp1
+	11: add t3, t3, _c_Scp1
+	12: return t3
 end
 
 void putarray(int n,int* arr)
