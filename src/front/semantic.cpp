@@ -88,7 +88,7 @@ frontend::STE::STE(ir::Operand _operand, vector<int> _dimension, int _size, bool
 
 /**
  * @brief 进入新作用域时，向符号表中压栈(作用域)
- * @note 作用域的id用作用域栈的大小确定
+ * @note 作用域的id通过作用域栈的大小确定
  * @note 作用域的名称为"Scp"+cnt
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-05-31
