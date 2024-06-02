@@ -124,6 +124,7 @@ void frontend::SymbolTable::exit_scope()
 string frontend::SymbolTable::get_scoped_name(string id) const
 {
     // TODO; lab2todo24 get_scoped_name
+    assert(id != "");
     return id + "_" + scope_stack.back().name;
 }
 
@@ -252,6 +253,8 @@ void frontend::Analyzer::analyzeDecl(Decl *root, vector<ir::Instruction *> &buff
     // TODO; lab2todo5 analyzeDecl
     if (MATCH_NODE_TYPE(NodeType::CONSTDECL, 0))
     {
+        GET_NODE_PTR(ConstDecl, constDecl, 0)
+        analyzeConstDecl(constDecl, buffer);
     }
     else if (MATCH_NODE_TYPE(NodeType::VARDECL, 0))
     {
@@ -1042,6 +1045,109 @@ void frontend::Analyzer::analyzeLVal(LVal *root, vector<ir::Instruction *> &buff
             root->offset = offsetVar.name;
             root->isPtr = cur < ste.dimension.size();
         }
+    }
+}
+
+/**
+ * @brief 3 常量声明 ConstDecl -> 'const' BType ConstDef { ',' ConstDef } ';'
+ * @param root
+ * @param buffer
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-02
+ */
+void frontend::Analyzer::analyzeConstDecl(ConstDecl *root, vector<ir::Instruction *> &buffer)
+{
+    // TODO; lab2todo34 analyzeConstDecl
+    GET_NODE_PTR(BType, bType, 1)
+    analyzeBType(bType); // BType
+    root->t = bType->t;
+    for (int i = 2; i < root->children.size(); i += 2) // ConstDef { ',' ConstDef }
+    {
+        GET_NODE_PTR(ConstDef, constDef, i)
+        analyzeConstDef(constDef, buffer, root->t);
+    }
+}
+
+/**
+ * @brief 5 常量定义 ConstDef -> Ident { '[' ConstExp ']' } '=' ConstInitVal
+ * @param root
+ * @param buffer
+ * @param type
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-02
+ */
+void frontend::Analyzer::analyzeConstDef(ConstDef *root, vector<ir::Instruction *> &buffer, ir::Type type)
+{
+    // TODO; lab2todo35 analyzeConstDef
+    GET_NODE_PTR(Term, term, 0)
+    analyzeTerm(term);
+    root->arr_name = symbol_table.get_scoped_name(term->v); // 获取变量名并重命名
+
+    //* 这里的处理方法与analyzeVarDef一致
+    vector<int> dimension;                                                   // 存储每一维变量的大小
+    int size;                                                                // 变量空间大小                                                              // 变量空间大小
+    if (root->children.size() > 1 && MATCH_NODE_TYPE(NodeType::CONSTEXP, 2)) // 如果是数组，初始size设置为1
+    {
+        size = 1;
+        //* 解析每一维的大小，并计算总大小
+        for (int i = 2; i < root->children.size(); i += 3) // { '[' ConstExp ']' }
+        {
+            if (MATCH_NODE_TYPE(NodeType::CONSTEXP, i))
+            {
+                GET_NODE_PTR(ConstExp, constExp, i)
+                analyzeConstExp(constExp);
+                assert(constExp->t == Type::IntLiteral && std::stoi(constExp->v) >= 0); // constExp一定是非负整数
+                dimension.push_back(std::stoi(constExp->v));
+                size *= std::stoi(constExp->v);
+            }
+            else
+                break;
+        }
+    }
+    else // 如果只是变量，大小设置为0
+        size = 0;
+
+    //* 这里的处理与变量有一点区别，常量在声明时必须初始化，所以不需要匹配节点
+    GET_NODE_PTR(ConstInitVal, constInitVal, root->children.size() - 1)
+    constInitVal->v = term->token.value; // 放入变量原名
+    if (type == Type::Int)               // 常量类型为整型
+    {
+        if (size == 0) // 如果是变量
+        {
+            symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::Int), dimension, size, true); // 插入符号表
+            constInitVal->t = Type::IntLiteral;
+        }
+        else // 如果是数组
+        {
+            assert(0 && "to be continue");
+        }
+    }
+    analyzeConstInitVal(constInitVal, buffer, size, 0, 0, dimension);
+}
+
+/**
+ * @brief 6 常量初值 ConstInitVal -> ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
+ * @param root
+ * @param buffer
+ * @param size
+ * @param cur
+ * @param offset
+ * @param dimension
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-02
+ */
+void frontend::Analyzer::analyzeConstInitVal(ConstInitVal *root, vector<ir::Instruction *> &buffer, int size, int cur, int offset, vector<int> &dimension)
+{
+    // TODO; lab2todo36 analyzeConstInitVal
+    if (size == 0) // 如果是普通变量
+    {
+        GET_NODE_PTR(ConstExp, constExp, 0) // 常量变量的初始化一定是通过ConstExp
+        analyzeConstExp(constExp);
+        symbol_table.scope_stack.back().table[root->v].val = constExp->v; // 将常量的字面量记录到符号表
+    }
+    else // 如果是数组
+    {
+        assert(0 && "to be continue");
     }
 }
 
