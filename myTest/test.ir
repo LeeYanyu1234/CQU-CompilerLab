@@ -1,0 +1,117 @@
+void global()
+	0: return null
+end
+
+int getarray(int* arr)
+end
+
+int getch()
+end
+
+int getfarray(float* arr)
+end
+
+float getfloat()
+end
+
+int getint()
+end
+
+int main()
+	0: call null, global()
+	1: alloc a_Scp1, 8
+	2: def t0, 0
+	3: store t0, a_Scp1, 0
+	4: def t1, 0
+	5: store t1, a_Scp1, 1
+	6: def t2, 0
+	7: store t2, a_Scp1, 2
+	8: def t3, 0
+	9: store t3, a_Scp1, 3
+	10: def t4, 0
+	11: store t4, a_Scp1, 4
+	12: def t5, 0
+	13: store t5, a_Scp1, 5
+	14: def t6, 0
+	15: store t6, a_Scp1, 6
+	16: def t7, 0
+	17: store t7, a_Scp1, 7
+	18: alloc b_Scp1, 8
+	19: def t8, 1
+	20: store t8, b_Scp1, 0
+	21: def t9, 2
+	22: store t9, b_Scp1, 1
+	23: def t10, 3
+	24: store t10, b_Scp1, 2
+	25: def t11, 4
+	26: store t11, b_Scp1, 3
+	27: def t12, 5
+	28: store t12, b_Scp1, 4
+	29: def t13, 6
+	30: store t13, b_Scp1, 5
+	31: def t14, 7
+	32: store t14, b_Scp1, 6
+	33: def t15, 8
+	34: store t15, b_Scp1, 7
+	35: def t16, 0
+	36: def t17, 2
+	37: def t18, 3
+	38: mul t17, t17, t18
+	39: add t16, t16, t17
+	40: def t19, 1
+	41: def t20, 1
+	42: mul t19, t19, t20
+	43: add t16, t16, t19
+	44: load t16, b_Scp1, t16
+	45: def t21, 0
+	46: def t22, 2
+	47: def t23, 0
+	48: mul t22, t22, t23
+	49: add t21, t21, t22
+	50: def t24, 1
+	51: def t25, 0
+	52: mul t24, t24, t25
+	53: add t21, t21, t24
+	54: load t21, b_Scp1, t21
+	55: add t16, t16, t21
+	56: def t26, 0
+	57: def t27, 2
+	58: def t28, 0
+	59: mul t27, t27, t28
+	60: add t26, t26, t27
+	61: def t29, 1
+	62: def t30, 1
+	63: mul t29, t29, t30
+	64: add t26, t26, t29
+	65: load t26, b_Scp1, t26
+	66: add t16, t16, t26
+	67: def t31, 0
+	68: def t32, 2
+	69: def t33, 2
+	70: mul t32, t32, t33
+	71: add t31, t31, t32
+	72: def t34, 1
+	73: def t35, 0
+	74: mul t34, t34, t35
+	75: add t31, t31, t34
+	76: load t31, b_Scp1, t31
+	77: add t16, t16, t31
+	78: return t16
+end
+
+void putarray(int n,int* arr)
+end
+
+void putch(int i)
+end
+
+void putfarray(int n,float* arr)
+end
+
+void putfloat(float f)
+end
+
+void putint(int i)
+end
+
+GVT:

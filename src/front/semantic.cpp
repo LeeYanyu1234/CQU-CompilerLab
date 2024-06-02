@@ -597,10 +597,10 @@ void frontend::Analyzer::analyzeAddExp(AddExp *root, vector<ir::Instruction *> &
         {
             if ((op1.type == Type::Int || op1.type == Type::Float) && op1.name.find('_') != op1.name.npos)
             {
-                auto tmp = Operand(getTmp(), op1.type == Type::Int ? Type::Int : Type::Float);
+                auto tmpVar = Operand(getTmp(), op1.type == Type::Int ? Type::Int : Type::Float);
                 Operator cal = (op1.type == Type::Int) ? Operator::mov : Operator::fmov;
-                buffer.push_back(new Instruction(op1, {}, tmp, cal));
-                std::swap(op1, tmp);
+                buffer.push_back(new Instruction(op1, {}, tmpVar, cal));
+                std::swap(op1, tmpVar);
             }
             for (int i = idx; i < root->children.size(); i += 2)
             {
@@ -694,6 +694,26 @@ void frontend::Analyzer::analyzePrimaryExp(PrimaryExp *root, vector<ir::Instruct
 
         if (lVal->t == Type::IntPtr || lVal->t == Type::FloatPtr) // 如果左值是数组，返回的是指针
         {
+            Operand lValVar = Operand(lVal->v, lVal->t);
+            Operand offsetVar = Operand(lVal->offset, Type::Int);
+            if (lVal->isPtr)
+            {
+                auto tmpVar = Operand(getTmp(), lVal->t);
+                buffer.push_back(new Instruction({lValVar}, {offsetVar}, {tmpVar}, {Operator::getptr}));
+                root->v = tmpVar.name;
+                root->t = tmpVar.type;
+            }
+            else
+            {
+                if (lVal->t == Type::IntPtr)
+                {
+                    buffer.push_back(new Instruction({lValVar}, {offsetVar}, {offsetVar}, {Operator::load}));
+                    root->v = offsetVar.name;
+                    root->t = offsetVar.type;
+                }
+                else
+                    assert(0 && "to be continue");
+            }
         }
         else // 如果左值是变量，返回的是变量名
         {
@@ -827,7 +847,7 @@ void frontend::Analyzer::analyzeVarDef(VarDef *root, vector<ir::Instruction *> &
                     buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::IntPtr}, {Operator::alloc}));
             }
         }
-        else if (type == Type::Float)
+        else if (type == Type::Float) // 变量类型为浮点型
         {
             initVal->t = Type::Float;
             if (size == 0) // 如果是变量，符号表中为浮点型变量
@@ -844,6 +864,7 @@ void frontend::Analyzer::analyzeVarDef(VarDef *root, vector<ir::Instruction *> &
         else
             assert(0 && "InitVal type error");
 
+        //* 对变量进行初始化
         analyzeInitVal(initVal, buffer, size, 0, 0, dimension);
     }
     else // 不包含可选项[ '=' InitVal ]，也就是说只声明，没有初始化
@@ -897,27 +918,28 @@ void frontend::Analyzer::analyzeConstExp(ConstExp *root)
 {
     // TODO; lab2todo25 analyzeConstExp
     GET_NODE_PTR(AddExp, addExp, 0)
-    vector<Instruction *> tmp;
-    analyzeAddExp(addExp, tmp);
+    vector<Instruction *> tmpInst;
+    analyzeAddExp(addExp, tmpInst);
     COPY_EXP_NODE(addExp, root)
 }
 
 /**
  * @brief 9 变量初值 InitVal -> Exp | '{' [ InitVal { ',' InitVal } ] '}'
- * @param root
+ * @param root InitVal类型节点
  * @param buffer
- * @param size
- * @param cur
+ * @param size 变量大小，0为变量，>=1为数组
+ * @param cur 当前数组的索引
  * @param offset
- * @param dimention
+ * @param dimention 数组的维度数组
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-06-01
  */
 void frontend::Analyzer::analyzeInitVal(InitVal *root, vector<ir::Instruction *> &buffer, int size, int cur, int offset, vector<int> &dimention)
 {
     // TODO; lab2todo27 analyzeInitVal
-    if (MATCH_NODE_TYPE(NodeType::EXP, 0)) // Exp
+    if (MATCH_NODE_TYPE(NodeType::EXP, 0) && size == 0) // Exp
     {
+        // 只有当size==0时初始化变量，而非数组
         GET_NODE_PTR(Exp, exp, 0)
         analyzeExp(exp, buffer);
 
@@ -927,11 +949,50 @@ void frontend::Analyzer::analyzeInitVal(InitVal *root, vector<ir::Instruction *>
                 buffer.push_back(new Instruction({exp->v, exp->t}, {}, {root->v, Type::Int}, {Operator::def}));
             else // 是全局变量，由于已经在静态区域申请了空间，所以需要通过mov指令初始化
             {
-                auto tmp = IntLiteral2Int(exp->v, buffer);
-                buffer.push_back(new Instruction(tmp, {}, Operand(root->v, Type::Int), Operator::mov));
+                auto tmpVar = IntLiteral2Int(exp->v, buffer);
+                buffer.push_back(new Instruction(tmpVar, {}, Operand(root->v, Type::Int), Operator::mov));
             }
         }
     }
+    else if (MATCH_NODE_TYPE(NodeType::TERMINAL, 0)) // '{' [ InitVal { ',' InitVal } ] '}'
+    {
+        assert(size >= 1); // {}都是对于数组赋值，此时的size>=1表示是数组
+        size /= dimention[cur];
+        int cnt = 0, tot = root->children.size() / 2;
+        for (int i = 1; i < root->children.size() - 1; i += 2) // 对已经初始化的索引进行初始化
+        {
+            GET_NODE_PTR(InitVal, initVal, i)
+            COPY_EXP_NODE(root, initVal)
+            if (tot <= dimention[cur])
+            {
+                analyzeInitVal(initVal, buffer, size, cur + 1, offset + cnt * size, dimention);
+            }
+            else
+            {
+                analyzeInitVal(initVal, buffer, 1, cur, offset + cnt, dimention);
+            }
+            cnt++;
+        }
+
+        for (int i = cnt * size; i < dimention[cur] * size; i++) // 剩下未明确初始化的索引自动初始化为0
+        {
+            Type type = (root->t == Type::Int) ? Type::IntLiteral : Type::FloatLiteral;
+            Operand tmpVar = (type == Type::IntLiteral) ? IntLiteral2Int("0", buffer) : FloatLiteral2Float("0.0", buffer);
+            buffer.push_back(new Instruction({root->v, (root->t == Type::Int ? Type::IntPtr : Type::FloatLiteral)}, {TOS(i), Type::IntLiteral}, {tmpVar}, {Operator::store}));
+        }
+    }
+    else if (dynamic_cast<InitVal *>(root->parent))
+    {
+        GET_NODE_PTR(Exp, exp, 0);
+        analyzeExp(exp, buffer);
+        Operand expVar = exp->t == Type::IntLiteral ? IntLiteral2Int(exp->v, buffer) : FloatLiteral2Float(exp->v, buffer);
+        if (root->t == Type::Int && exp->t == Type::IntLiteral)
+        {
+            buffer.push_back(new Instruction({root->v, Type::IntPtr}, {TOS(offset), Type::IntLiteral}, {expVar}, {Operator::store}));
+        }
+    }
+    else
+        assert(0 && "analyzeInitVal error");
 }
 
 /**
@@ -941,7 +1002,7 @@ void frontend::Analyzer::analyzeInitVal(InitVal *root, vector<ir::Instruction *>
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-06-01
  */
-void frontend::Analyzer::analyzeLVal(LVal *root, vector<ir::Instruction *> buffer)
+void frontend::Analyzer::analyzeLVal(LVal *root, vector<ir::Instruction *> &buffer)
 {
     // TODO; lab2todo30 analyzeLVal
     GET_NODE_PTR(Term, valName, 0); // valName->v为标识符名称
@@ -960,12 +1021,26 @@ void frontend::Analyzer::analyzeLVal(LVal *root, vector<ir::Instruction *> buffe
         root->v = ste.operand.name; // 复制变量名/数组名
         root->t = ste.operand.type; // 复制变量类型/数组类型
 
-        if (ste.size == 0) // 如果size大小为0，说明是变量
+        if (ste.size == 0) // size==0，说明是变量
         {
             root->isPtr = false;
         }
         else // size>0，说明是数组
         {
+            int cur = 0, curSize = ste.size;
+            Operand offsetVar = IntLiteral2Int("0", buffer);
+            for (int i = 2; i < root->children.size(); i += 3)
+            {
+                curSize /= ste.dimension[cur++];
+                Operand tmpVar = IntLiteral2Int(TOS(curSize), buffer);
+                GET_NODE_PTR(Exp, exp, i)
+                analyzeExp(exp, buffer);
+                auto expVar = exp->t == Type::IntLiteral ? IntLiteral2Int(exp->v, buffer) : Operand(exp->v, exp->t);
+                buffer.push_back(new Instruction({tmpVar}, {expVar}, {tmpVar}, {Operator::mul}));
+                buffer.push_back(new Instruction({offsetVar}, {tmpVar}, {offsetVar}, {Operator::add}));
+            }
+            root->offset = offsetVar.name;
+            root->isPtr = cur < ste.dimension.size();
         }
     }
 }

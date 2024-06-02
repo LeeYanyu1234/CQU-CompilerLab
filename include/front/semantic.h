@@ -155,7 +155,7 @@ namespace frontend
         void analyzeVarDef(VarDef *, vector<ir::Instruction *> &, ir::Type);
         void analyzeConstExp(ConstExp *);
         void analyzeInitVal(InitVal *, vector<ir::Instruction *> &, int size, int cur, int offset, vector<int> &dim);
-        void analyzeLVal(LVal *, vector<ir::Instruction *>);
+        void analyzeLVal(LVal *, vector<ir::Instruction *> &);
 
         ir::Operand IntLiteral2Int(string, vector<ir::Instruction *> &);
         ir::Operand FloatLiteral2Float(string, vector<ir::Instruction *> &);
