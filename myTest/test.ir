@@ -2,10 +2,6 @@ void global()
 	0: return null
 end
 
-int defn()
-	0: return 4
-end
-
 int getarray(int* arr)
 end
 
@@ -23,9 +19,13 @@ end
 
 int main()
 	0: call null, global()
-	1: call t0, defn()
-	2: mov a_Scp1, t0
-	3: return a_Scp1
+	1: def a_Scp1, 473289
+	2: def t0, 10
+	3: mov a_Scp1, t0
+	4: mov t1, a_Scp1
+	5: def t2, 3
+	6: mod t1, t1, t2
+	7: return t1
 end
 
 void putarray(int n,int* arr)

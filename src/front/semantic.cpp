@@ -618,14 +618,14 @@ void frontend::Analyzer::analyzeAddExp(AddExp *root, vector<ir::Instruction *> &
         }
     }
 
-    if (mulExp1->t == Type::IntLiteral || mulExp1->t == Type::FloatLiteral && idx == -1) // 如果表达式只有常量
+    if ((mulExp1->t == Type::IntLiteral || mulExp1->t == Type::FloatLiteral) && idx == -1) // 如果表达式只有常量
     {
         COPY_EXP_NODE(mulExp1, root)
     }
     else
     {
         Operand op1;
-        if (idx == -1) // 表达式有常量
+        if (idx == -1)
         {
             op1.name = mulExp1->v;
             op1.type = mulExp1->t;
@@ -713,9 +713,186 @@ void frontend::Analyzer::analyzeAddExp(AddExp *root, vector<ir::Instruction *> &
 void frontend::Analyzer::analyzeMulExp(MulExp *root, vector<ir::Instruction *> &buffer)
 {
     // TODO; lab2todo15 analyzeMulExp
-    GET_NODE_PTR(UnaryExp, unaryExp, 0)
-    analyzeUnaryExp(unaryExp, buffer);
-    COPY_EXP_NODE(unaryExp, root)
+    GET_NODE_PTR(UnaryExp, unaryExp1, 0)
+    analyzeUnaryExp(unaryExp1, buffer);
+
+    int idx = -1;
+    //* 如果表达式中有常量
+    if (unaryExp1->t == Type::IntLiteral || unaryExp1->t == Type::FloatLiteral)
+    {
+        for (int i = 2; i < root->children.size(); i += 2)
+        {
+            vector<Instruction *> unaryExpInst;
+            GET_NODE_PTR(Term, term, i - 1)
+            GET_NODE_PTR(UnaryExp, unaryExp2, i)
+            analyzeUnaryExp(unaryExp2, unaryExpInst);
+            if (unaryExp2->t == Type::IntLiteral || unaryExp2->t == Type::FloatLiteral)
+            {
+                if (unaryExp1->t == Type::IntLiteral && unaryExp2->t == Type::IntLiteral)
+                {
+                    if (term->token.type == TokenType::MULT)
+                    {
+                        unaryExp1->v = TOS(std::stoi(unaryExp1->v) * std::stoi(unaryExp2->v));
+                    }
+                    else if (term->token.type == TokenType::DIV)
+                    {
+                        unaryExp1->v = TOS(std::stoi(unaryExp1->v) / std::stoi(unaryExp2->v));
+                    }
+                    else if (term->token.type == TokenType::MOD)
+                    {
+                        unaryExp1->v = TOS(std::stoi(unaryExp1->v) % std::stoi(unaryExp2->v));
+                    }
+                    else
+                        assert(0 && "MulExp op error");
+                }
+                else if (unaryExp1->t == Type::IntLiteral && unaryExp2->t == Type::FloatLiteral)
+                {
+                    unaryExp1->t = Type::FloatLiteral;
+                    if (term->token.type == TokenType::MULT)
+                    {
+                        unaryExp1->v = TOS(std::stoi(unaryExp1->v) * std::stof(unaryExp2->v));
+                    }
+                    else if (term->token.type == TokenType::DIV)
+                    {
+                        unaryExp1->v = TOS(std::stoi(unaryExp1->v) / std::stof(unaryExp2->v));
+                    }
+                    //* 模运算只能是整数
+                    // else if (term->token.type == TokenType::MOD)
+                    // {
+                    //     unaryExp1->v = TOS(std::stoi(unaryExp1->v) % std::stof(unaryExp2->v));
+                    // }
+                    else
+                        assert(0 && "MulExp op error");
+                }
+                else if (unaryExp1->t == Type::FloatLiteral && unaryExp2->t == Type::IntLiteral)
+                {
+                    if (term->token.type == TokenType::MULT)
+                    {
+                        unaryExp1->v = TOS(std::stof(unaryExp1->v) * std::stoi(unaryExp2->v));
+                    }
+                    else if (term->token.type == TokenType::DIV)
+                    {
+                        unaryExp1->v = TOS(std::stof(unaryExp1->v) / std::stoi(unaryExp2->v));
+                    }
+                    else
+                        assert(0 && "MulExp op error");
+                }
+                else
+                {
+                    if (term->token.type == TokenType::MULT)
+                    {
+                        unaryExp1->v = TOS(std::stof(unaryExp1->v) * std::stof(unaryExp2->v));
+                    }
+                    else if (term->token.type == TokenType::DIV)
+                    {
+                        unaryExp1->v = TOS(std::stof(unaryExp1->v) / std::stof(unaryExp2->v));
+                    }
+                    else
+                        assert(0 && "MulExp op error");
+                }
+            }
+            else
+            {
+                idx = i;
+                break;
+            }
+        }
+    }
+
+    if ((unaryExp1->t == Type::IntLiteral || unaryExp1->t == Type::FloatLiteral) && idx == -1) // 如果表达式只有常量
+    {
+        COPY_EXP_NODE(unaryExp1, root)
+    }
+    else
+    {
+        Operand op1;
+        if (idx == -1)
+        {
+            op1.name = unaryExp1->v;
+            op1.type = unaryExp1->t;
+            idx = 2;
+        }
+        else
+        {
+            if (unaryExp1->t == Type::IntLiteral)
+            {
+                op1 = IntLiteral2Int(unaryExp1->v, buffer);
+            }
+            else
+            {
+                op1 = FloatLiteral2Float(unaryExp1->v, buffer);
+            }
+        }
+
+        if (root->children.size() > 1)
+        {
+            if ((op1.type == Type::Int || op1.type == Type::Float) && op1.name.find('_') != op1.name.npos)
+            {
+                auto tmpVar = Operand(getTmp(), op1.type == Type::Int ? Type::Int : Type::Float);
+                Operator cal = (op1.type == Type::Int) ? Operator::mov : Operator::fmov;
+                buffer.push_back(new Instruction(op1, {}, tmpVar, cal));
+                std::swap(op1, tmpVar);
+            }
+            for (int i = idx; i < root->children.size(); i += 2)
+            {
+                GET_NODE_PTR(Term, term, i - 1)
+                GET_NODE_PTR(UnaryExp, unaryExp2, i)
+                analyzeUnaryExp(unaryExp2, buffer);
+                Operand op2;
+                if (unaryExp2->t == Type::IntLiteral)
+                {
+                    op2 = IntLiteral2Int(unaryExp2->v, buffer);
+                }
+                else if (unaryExp2->t == Type::FloatLiteral)
+                {
+                    op2 = FloatLiteral2Float(unaryExp2->v, buffer);
+                }
+                else
+                {
+                    op2 = Operand(unaryExp2->v, unaryExp2->t);
+                }
+
+                if (term->token.type == TokenType::MULT)
+                {
+                    if (op1.type == Type::Int && op2.type == Type::Int)
+                    {
+                        buffer.push_back(new Instruction(op1, op2, op1, Operator::mul));
+                    }
+                    else
+                    {
+                        assert(0 && "to be continue");
+                    }
+                }
+                else if (term->token.type == TokenType::DIV)
+                {
+                    if (op1.type == Type::Int && op2.type == Type::Int)
+                    {
+                        buffer.push_back(new Instruction(op1, op2, op1, Operator::div));
+                    }
+                    else
+                    {
+                        assert(0 && "to be continue");
+                    }
+                }
+                else if (term->token.type == TokenType::MOD)
+                {
+                    if (op1.type == Type::Int && op2.type == Type::Int)
+                    {
+                        buffer.push_back(new Instruction(op1, op2, op1, Operator::mod));
+                    }
+                    else
+                    {
+                        assert(0 && "% type error");
+                    }
+                }
+                else
+                    assert(0 && "MulExp op error");
+            }
+        }
+
+        root->t = op1.type;
+        root->v = op1.name;
+    }
 }
 
 /**

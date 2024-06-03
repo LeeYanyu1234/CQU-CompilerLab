@@ -222,3 +222,4 @@ test/output/function/79_var_name.out
 test/output/function/89_many_globals.out
 test/output/function/95_float.out
 myTest/
+myTest/test.ir
