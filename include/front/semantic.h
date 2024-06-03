@@ -141,6 +141,7 @@ namespace frontend
         void analyzeFuncType(FuncType *);
         void analyzeTerm(Term *);
         void analyzeFuncFParams(FuncFParams *, vector<ir::Operand> &);
+        void analyzeFuncFParam(FuncFParam *, vector<ir::Operand> &);
         void analyzeBlock(Block *, vector<ir::Instruction *> &);
         void analyzeBlockItem(BlockItem *, vector<ir::Instruction *> &);
         void analyzeStmt(Stmt *, vector<ir::Instruction *> &);
@@ -159,6 +160,7 @@ namespace frontend
         void analyzeConstDecl(ConstDecl *, vector<ir::Instruction *> &);
         void analyzeConstDef(ConstDef *, vector<ir::Instruction *> &, ir::Type);
         void analyzeConstInitVal(ConstInitVal *, vector<ir::Instruction *> &, int, int, int, vector<int> &);
+        void analyzeFuncRParams(FuncRParams *, vector<ir::Instruction *> &, vector<ir::Operand> &, vector<ir::Operand> &);
 
         ir::Operand IntLiteral2Int(string, vector<ir::Instruction *> &);
         ir::Operand FloatLiteral2Float(string, vector<ir::Instruction *> &);

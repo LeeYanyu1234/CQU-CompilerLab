@@ -346,6 +346,55 @@ void frontend::Analyzer::analyzeTerm(Term *root)
 void frontend::Analyzer::analyzeFuncFParams(FuncFParams *root, vector<ir::Operand> &fParams)
 {
     // TODO; lab2todo9 analyzeFuncFParams
+    for (int i = 0; i < root->children.size(); i += 2)
+    {
+        GET_NODE_PTR(FuncFParam, funcFParam, i)
+        analyzeFuncFParam(funcFParam, fParams);
+    }
+}
+
+/**
+ * @brief 12函数形参 FuncFParam -> BType Ident [ '[' ']' { '[' Exp ']' } ]
+ * @param root
+ * @param fParams
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-03
+ */
+void frontend::Analyzer::analyzeFuncFParam(FuncFParam *root, vector<ir::Operand> &fParams)
+{
+    // TODO; lab2todo37 analyzeFuncFParam
+    GET_NODE_PTR(BType, bType, 0)
+    analyzeBType(bType); // BType
+    GET_NODE_PTR(Term, varName, 1)
+    analyzeTerm(varName);                                              // Ident，变量原名存放在varName->v中
+    std::string varScpName = symbol_table.get_scoped_name(varName->v); // 重命名变量
+
+    vector<int> dimension;
+    int size;
+    if (root->children.size() > 2) // 如果是数组，初始size设置为1
+    {
+        assert(0 && "to be continue");
+        // size = 1;
+        // //* 解析每一维的大小，并计算总大小
+        // for (int i = 2; i < root->children.size(); i += 3) // { '[' ConstExp ']' }
+        // {
+        //     if (MATCH_NODE_TYPE(NodeType::CONSTEXP, i))
+        //     {
+        //         GET_NODE_PTR(ConstExp, constExp, i)
+        //         analyzeConstExp(constExp);
+        //         assert(constExp->t == Type::IntLiteral && std::stoi(constExp->v) >= 0); // constExp一定是非负整数
+        //         dimension.push_back(std::stoi(constExp->v));
+        //         size *= std::stoi(constExp->v);
+        //     }
+        //     else
+        //         break;
+        // }
+    }
+    else // 如果只是变量，大小设置为0
+        size = 0;
+
+    symbol_table.scope_stack.back().table[varName->v] = STE({varScpName, bType->t}, {dimension}, size);
+    fParams.push_back({varScpName, bType->t});
 }
 
 /**
@@ -441,8 +490,6 @@ void frontend::Analyzer::analyzeStmt(Stmt *root, vector<ir::Instruction *> &buff
         }
         else
             assert(0 && "lVal type error");
-
-        int a = 1;
     }
     else
     {
@@ -630,9 +677,21 @@ void frontend::Analyzer::analyzeAddExp(AddExp *root, vector<ir::Instruction *> &
                     {
                         buffer.push_back(new Instruction(op1, op2, op1, Operator::add));
                     }
+                    else
+                    {
+                        assert(0 && "to be continue");
+                    }
                 }
                 else if (term->token.type == TokenType::MINU)
                 {
+                    if (op1.type == Type::Int && op2.type == Type::Int)
+                    {
+                        buffer.push_back(new Instruction(op1, op2, op1, Operator::sub));
+                    }
+                    else
+                    {
+                        assert(0 && "to be continue");
+                    }
                 }
                 else
                     assert(0 && "AddExp op error");
@@ -669,12 +728,45 @@ void frontend::Analyzer::analyzeMulExp(MulExp *root, vector<ir::Instruction *> &
 void frontend::Analyzer::analyzeUnaryExp(UnaryExp *root, vector<ir::Instruction *> &buffer)
 {
     // TODO; lab2todo16 analyzeUnaryExp
-    if (MATCH_NODE_TYPE(NodeType::PRIMARYEXP, 0))
+    if (MATCH_NODE_TYPE(NodeType::PRIMARYEXP, 0)) // PrimaryExp
     {
         GET_NODE_PTR(PrimaryExp, primaryExp, 0)
         analyzePrimaryExp(primaryExp, buffer);
         COPY_EXP_NODE(primaryExp, root)
     }
+    else if (MATCH_NODE_TYPE(NodeType::TERMINAL, 0)) // Ident '(' [FuncRParams] ')' 函数调用
+    {
+        GET_NODE_PTR(Term, funcName, 0)
+        analyzeTerm(funcName);                                             // 函数名存放在funcName->v中
+        auto fParams = symbol_table.functions[funcName->v]->ParameterList; // 通过函数名找到函数形参表
+        auto returnType = symbol_table.functions[funcName->v]->returnType; // 通过函数名找到函数返回值类型
+
+        vector<Operand> args;
+        if (root->children.size() > 3) // 函数调用需要传参
+        {
+            GET_NODE_PTR(FuncRParams, funcRParams, 2)
+            analyzeFuncRParams(funcRParams, buffer, fParams, args);
+        }
+
+        if (returnType == Type::null)
+        {
+            buffer.push_back(new ir::CallInst({funcName->v, args, {}}));
+            root->t = Type::null;
+        }
+        else
+        {
+            Operand tmpVarReturn = Operand({getTmp(), returnType});
+            buffer.push_back(new ir::CallInst(funcName->v, args, tmpVarReturn));
+            root->v = tmpVarReturn.name;
+            root->t = returnType;
+        }
+    }
+    else if (MATCH_NODE_TYPE(NodeType::UNARYOP, 0)) // UnaryOp UnaryExp
+    {
+        assert(0 && "to be continue");
+    }
+    else
+        assert(0 && "analyzeUnaryExp error");
 }
 
 /**
@@ -690,7 +782,7 @@ void frontend::Analyzer::analyzePrimaryExp(PrimaryExp *root, vector<ir::Instruct
     if (root->children.size() > 1) // '(' Exp ')'
     {
     }
-    else if (MATCH_NODE_TYPE(NodeType::LVAL, 0))
+    else if (MATCH_NODE_TYPE(NodeType::LVAL, 0)) // LVal
     {
         GET_NODE_PTR(LVal, lVal, 0)
         analyzeLVal(lVal, buffer);
@@ -1144,7 +1236,7 @@ void frontend::Analyzer::analyzeConstDef(ConstDef *root, vector<ir::Instruction 
 void frontend::Analyzer::analyzeConstInitVal(ConstInitVal *root, vector<ir::Instruction *> &buffer, int size, int cur, int offset, vector<int> &dimension)
 {
     // TODO; lab2todo36 analyzeConstInitVal
-    //* 这里的处理类似于analyzeInitVal
+    //* 这里的处理类似于analyzeInitVal，但是也有区别
     if (size == 0) // 如果是普通变量
     {
         GET_NODE_PTR(ConstExp, constExp, 0) // 常量变量的初始化一定是通过ConstExp
@@ -1177,13 +1269,12 @@ void frontend::Analyzer::analyzeConstInitVal(ConstInitVal *root, vector<ir::Inst
             {
                 Type type = (root->t == Type::Int) ? Type::IntLiteral : Type::FloatLiteral;
                 Operand tmpVar = (type == Type::IntLiteral) ? IntLiteral2Int("0", buffer) : FloatLiteral2Float("0.0", buffer);
-                //? 这里的root->v存放的是数组原名
+                //? 这里的root->v存放的是变量原名
                 buffer.push_back(new Instruction({symbol_table.get_scoped_name(root->v), (root->t == Type::Int ? Type::IntPtr : Type::FloatLiteral)}, {TOS(i), Type::IntLiteral}, {tmpVar}, {Operator::store}));
             }
         }
         else if (dynamic_cast<ConstInitVal *>(root->parent))
         {
-            //* 这里与analyzeInitVal有所区别
             GET_NODE_PTR(ConstExp, constExp, 0);
             analyzeConstExp(constExp);
             // Operand constExpVar = constExp->t == Type::IntLiteral ? IntLiteral2Int(constExp->v, buffer) : FloatLiteral2Float(constExp->v, buffer);
@@ -1198,6 +1289,34 @@ void frontend::Analyzer::analyzeConstInitVal(ConstInitVal *root, vector<ir::Inst
         }
         else
             assert(0 && "analyzeConstInitVal error");
+    }
+}
+
+/**
+ * @brief 24函数实参表 FuncRParams -> Exp { ',' Exp }
+ * @param root
+ * @param buffer
+ * @param fParams
+ * @param args
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-03
+ */
+void frontend::Analyzer::analyzeFuncRParams(FuncRParams *root, vector<ir::Instruction *> &buffer, vector<ir::Operand> &fParams, vector<ir::Operand> &args)
+{
+    for (int i = 0, curParam = 0; i < root->children.size(); i += 2)
+    {
+        GET_NODE_PTR(Exp, exp, i)
+        analyzeExp(exp, buffer);
+        Operand fParam = fParams[curParam++];
+        Operand arg = Operand(exp->v, exp->t);
+        if (fParam.type == Type::Int)
+        {
+            args.push_back(arg);
+        }
+        else
+        {
+            assert("to be continue");
+        }
     }
 }
 
