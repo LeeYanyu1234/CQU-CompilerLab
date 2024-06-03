@@ -1038,7 +1038,7 @@ void frontend::Analyzer::analyzeInitVal(InitVal *root, vector<ir::Instruction *>
         GET_NODE_PTR(Exp, exp, 0)
         analyzeExp(exp, buffer);
 
-        if (root->t == Type::Int && exp->t == Type::IntLiteral)
+        if (root->t == Type::Int && exp->t == Type::IntLiteral) // 如果是通过字面量初始化
         {
             if (symbol_table.scope_stack.size() > 1) // 不是全局变量，直接def即可
                 buffer.push_back(new Instruction({exp->v, exp->t}, {}, {root->v, Type::Int}, {Operator::def}));
@@ -1047,6 +1047,15 @@ void frontend::Analyzer::analyzeInitVal(InitVal *root, vector<ir::Instruction *>
                 auto tmpVar = IntLiteral2Int(exp->v, buffer);
                 buffer.push_back(new Instruction(tmpVar, {}, Operand(root->v, Type::Int), Operator::mov));
             }
+        }
+        else if (root->t == Type::Int && exp->t == Type::Int) // 通过变量初始化
+        {
+            Operand tmpVar = Operand(exp->v, exp->t);
+            buffer.push_back(new Instruction({tmpVar}, {}, {root->v, Type::Int}, {Operator::mov}));
+        }
+        else
+        {
+            assert(0 && "to be continue");
         }
     }
     else if (MATCH_NODE_TYPE(NodeType::TERMINAL, 0)) // '{' [ InitVal { ',' InitVal } ] '}'

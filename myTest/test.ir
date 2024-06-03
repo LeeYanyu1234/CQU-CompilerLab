@@ -2,12 +2,8 @@ void global()
 	0: return null
 end
 
-int func(int p_Scp1)
-	0: mov t0, p_Scp1
-	1: def t1, 1
-	2: sub t0, t0, t1
-	3: mov p_Scp1, t0
-	4: return p_Scp1
+int defn()
+	0: return 4
 end
 
 int getarray(int* arr)
@@ -27,12 +23,9 @@ end
 
 int main()
 	0: call null, global()
-	1: def b_Scp1, 473289
-	2: def t2, 10
-	3: mov a_Scp0, t2
-	4: call t3, func(a_Scp0)
-	5: mov b_Scp1, t3
-	6: return b_Scp1
+	1: call t0, defn()
+	2: mov a_Scp1, t0
+	3: return a_Scp1
 end
 
 void putarray(int n,int* arr)
@@ -51,4 +44,3 @@ void putint(int i)
 end
 
 GVT:
-	a_Scp0 int 0

@@ -11,6 +11,7 @@
                 // "./test/testcase/basic/07_const_var_defn3.sy",
                 // "./test/testcase/basic/08_const_array_defn.sy",
                 // "./test/testcase/basic/09_func_defn.sy",
+                // "./test/testcase/basic/10_var_defn_func.sy",
                 "-s2",
                 // "-e",
                 "-o",
