@@ -7,8 +7,11 @@
             "request": "launch",
             "program": "${workspaceFolder}/bin/compiler",
             "args": [
-                "./test/testcase/basic/07_const_var_defn3.sy",
+                // "./test/testcase/basic/06_const_var_defn2.sy",
+                // "./test/testcase/basic/07_const_var_defn3.sy",
+                "./test/testcase/basic/08_const_array_defn.sy",
                 "-s2",
+                // "-e",
                 "-o",
                 "./myTest/test.ir"
             ],

@@ -933,11 +933,11 @@ void frontend::Analyzer::analyzeConstExp(ConstExp *root)
  * @param size 变量大小，0为变量，>=1为数组
  * @param cur 当前数组的索引
  * @param offset
- * @param dimention 数组的维度数组
+ * @param dimension 数组的维度数组
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-06-01
  */
-void frontend::Analyzer::analyzeInitVal(InitVal *root, vector<ir::Instruction *> &buffer, int size, int cur, int offset, vector<int> &dimention)
+void frontend::Analyzer::analyzeInitVal(InitVal *root, vector<ir::Instruction *> &buffer, int size, int cur, int offset, vector<int> &dimension)
 {
     // TODO; lab2todo27 analyzeInitVal
     if (MATCH_NODE_TYPE(NodeType::EXP, 0) && size == 0) // Exp
@@ -960,24 +960,24 @@ void frontend::Analyzer::analyzeInitVal(InitVal *root, vector<ir::Instruction *>
     else if (MATCH_NODE_TYPE(NodeType::TERMINAL, 0)) // '{' [ InitVal { ',' InitVal } ] '}'
     {
         assert(size >= 1); // {}都是对于数组赋值，此时的size>=1表示是数组
-        size /= dimention[cur];
+        size /= dimension[cur];
         int cnt = 0, tot = root->children.size() / 2;
         for (int i = 1; i < root->children.size() - 1; i += 2) // 对已经初始化的索引进行初始化
         {
             GET_NODE_PTR(InitVal, initVal, i)
             COPY_EXP_NODE(root, initVal)
-            if (tot <= dimention[cur])
+            if (tot <= dimension[cur])
             {
-                analyzeInitVal(initVal, buffer, size, cur + 1, offset + cnt * size, dimention);
+                analyzeInitVal(initVal, buffer, size, cur + 1, offset + cnt * size, dimension);
             }
             else
             {
-                analyzeInitVal(initVal, buffer, 1, cur, offset + cnt, dimention);
+                analyzeInitVal(initVal, buffer, 1, cur, offset + cnt, dimension);
             }
             cnt++;
         }
 
-        for (int i = cnt * size; i < dimention[cur] * size; i++) // 剩下未明确初始化的索引自动初始化为0
+        for (int i = cnt * size; i < dimension[cur] * size; i++) // 剩下未明确初始化的索引自动初始化为0
         {
             Type type = (root->t == Type::Int) ? Type::IntLiteral : Type::FloatLiteral;
             Operand tmpVar = (type == Type::IntLiteral) ? IntLiteral2Int("0", buffer) : FloatLiteral2Float("0.0", buffer);
@@ -1112,14 +1112,19 @@ void frontend::Analyzer::analyzeConstDef(ConstDef *root, vector<ir::Instruction 
     constInitVal->v = term->token.value; // 放入变量原名
     if (type == Type::Int)               // 常量类型为整型
     {
-        if (size == 0) // 如果是变量
+        if (size == 0) // 如果是普通变量
         {
             symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::Int), dimension, size, true); // 插入符号表
-            constInitVal->t = Type::IntLiteral;
+            constInitVal->t = Type::Int;
         }
         else // 如果是数组
         {
-            assert(0 && "to be continue");
+            symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::IntPtr), dimension, size, true); // 插入符号表
+            constInitVal->t = Type::IntLiteral;
+            if (symbol_table.scope_stack.size() > 1) // 如果不是一个全局变量，需要通过alloc分配空间
+            {
+                buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::IntPtr}, {Operator::alloc}));
+            }
         }
     }
     analyzeConstInitVal(constInitVal, buffer, size, 0, 0, dimension);
@@ -1139,6 +1144,7 @@ void frontend::Analyzer::analyzeConstDef(ConstDef *root, vector<ir::Instruction 
 void frontend::Analyzer::analyzeConstInitVal(ConstInitVal *root, vector<ir::Instruction *> &buffer, int size, int cur, int offset, vector<int> &dimension)
 {
     // TODO; lab2todo36 analyzeConstInitVal
+    //* 这里的处理类似于analyzeInitVal
     if (size == 0) // 如果是普通变量
     {
         GET_NODE_PTR(ConstExp, constExp, 0) // 常量变量的初始化一定是通过ConstExp
@@ -1147,7 +1153,51 @@ void frontend::Analyzer::analyzeConstInitVal(ConstInitVal *root, vector<ir::Inst
     }
     else // 如果是数组
     {
-        assert(0 && "to be continue");
+        if (MATCH_NODE_TYPE(NodeType::TERMINAL, 0)) // '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
+        {
+            assert(size >= 1); // {}都是对于数组赋值，此时的size>=1表示是数组
+            size /= dimension[cur];
+            int cnt = 0, tot = root->children.size() / 2;
+            for (int i = 1; i < root->children.size() - 1; i += 2) // 对已经初始化的索引进行初始化
+            {
+                GET_NODE_PTR(ConstInitVal, constInitVal, i)
+                COPY_EXP_NODE(root, constInitVal)
+                if (tot <= dimension[cur])
+                {
+                    analyzeConstInitVal(constInitVal, buffer, size, cur + 1, offset + cnt * size, dimension);
+                }
+                else
+                {
+                    analyzeConstInitVal(constInitVal, buffer, 1, cur, offset + cnt, dimension);
+                }
+                cnt++;
+            }
+
+            for (int i = cnt * size; i < dimension[cur] * size; i++) // 剩下未明确初始化的索引自动初始化为0
+            {
+                Type type = (root->t == Type::Int) ? Type::IntLiteral : Type::FloatLiteral;
+                Operand tmpVar = (type == Type::IntLiteral) ? IntLiteral2Int("0", buffer) : FloatLiteral2Float("0.0", buffer);
+                //? 这里的root->v存放的是数组原名
+                buffer.push_back(new Instruction({symbol_table.get_scoped_name(root->v), (root->t == Type::Int ? Type::IntPtr : Type::FloatLiteral)}, {TOS(i), Type::IntLiteral}, {tmpVar}, {Operator::store}));
+            }
+        }
+        else if (dynamic_cast<ConstInitVal *>(root->parent))
+        {
+            //* 这里与analyzeInitVal有所区别
+            GET_NODE_PTR(ConstExp, constExp, 0);
+            analyzeConstExp(constExp);
+            // Operand constExpVar = constExp->t == Type::IntLiteral ? IntLiteral2Int(constExp->v, buffer) : FloatLiteral2Float(constExp->v, buffer);
+            if (root->t == Type::IntLiteral && constExp->t == Type::IntLiteral)
+            {
+                buffer.push_back(new Instruction({symbol_table.get_scoped_name(root->v), Type::IntPtr}, {TOS(offset), Type::IntLiteral}, {constExp->v, constExp->t}, {Operator::store}));
+            }
+            else
+            {
+                assert(0 && "to be continue");
+            }
+        }
+        else
+            assert(0 && "analyzeConstInitVal error");
     }
 }
 
