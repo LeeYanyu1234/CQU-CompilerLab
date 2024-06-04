@@ -1,0 +1,195 @@
+void global()
+	0: return null
+end
+
+int EightWhile()
+	0: def a_Scp1, 473289
+	1: def t0, 5
+	2: mov a_Scp1, t0
+	3: def b_Scp1, 473289
+	4: def c_Scp1, 473289
+	5: def t1, 6
+	6: mov b_Scp1, t1
+	7: def t2, 7
+	8: mov c_Scp1, t2
+	9: def d_Scp1, 473289
+	10: def t3, 10
+	11: mov d_Scp1, t3
+	12: mov t4, a_Scp1
+	13: def t5, 20
+	14: lss t4, t4, t5
+	15: if t4 goto [pc, 2]
+	16: goto [pc, 111]
+	17: mov t6, a_Scp1
+	18: def t7, 3
+	19: add t6, t6, t7
+	20: mov a_Scp1, t6
+	21: mov t8, b_Scp1
+	22: def t9, 10
+	23: lss t8, t8, t9
+	24: if t8 goto [pc, 2]
+	25: goto [pc, 96]
+	26: mov t10, b_Scp1
+	27: def t11, 1
+	28: add t10, t10, t11
+	29: mov b_Scp1, t10
+	30: mov t12, c_Scp1
+	31: def t13, 7
+	32: eq t12, t12, t13
+	33: if t12 goto [pc, 2]
+	34: goto [pc, 81]
+	35: mov t14, c_Scp1
+	36: def t15, 1
+	37: sub t14, t14, t15
+	38: mov c_Scp1, t14
+	39: mov t16, d_Scp1
+	40: def t17, 20
+	41: lss t16, t16, t17
+	42: if t16 goto [pc, 2]
+	43: goto [pc, 66]
+	44: mov t18, d_Scp1
+	45: def t19, 3
+	46: add t18, t18, t19
+	47: mov d_Scp1, t18
+	48: mov t20, e_Scp0
+	49: def t21, 1
+	50: gtr t20, t20, t21
+	51: if t20 goto [pc, 2]
+	52: goto [pc, 51]
+	53: mov t22, e_Scp0
+	54: def t23, 1
+	55: sub t22, t22, t23
+	56: mov e_Scp0, t22
+	57: mov t24, f_Scp0
+	58: def t25, 2
+	59: gtr t24, t24, t25
+	60: if t24 goto [pc, 2]
+	61: goto [pc, 36]
+	62: mov t26, f_Scp0
+	63: def t27, 2
+	64: sub t26, t26, t27
+	65: mov f_Scp0, t26
+	66: mov t28, g_Scp0
+	67: def t29, 3
+	68: lss t28, t28, t29
+	69: if t28 goto [pc, 2]
+	70: goto [pc, 21]
+	71: mov t30, g_Scp0
+	72: def t31, 10
+	73: add t30, t30, t31
+	74: mov g_Scp0, t30
+	75: mov t32, h_Scp0
+	76: def t33, 10
+	77: lss t32, t32, t33
+	78: if t32 goto [pc, 2]
+	79: goto [pc, 6]
+	80: mov t34, h_Scp0
+	81: def t35, 8
+	82: add t34, t34, t35
+	83: mov h_Scp0, t34
+	84: goto [pc, -9]
+	85: __unuse__ null, null, null
+	86: mov t36, h_Scp0
+	87: def t37, 1
+	88: sub t36, t36, t37
+	89: mov h_Scp0, t36
+	90: goto [pc, -24]
+	91: __unuse__ null, null, null
+	92: mov t38, g_Scp0
+	93: def t39, 8
+	94: sub t38, t38, t39
+	95: mov g_Scp0, t38
+	96: goto [pc, -39]
+	97: __unuse__ null, null, null
+	98: mov t40, f_Scp0
+	99: def t41, 1
+	100: add t40, t40, t41
+	101: mov f_Scp0, t40
+	102: goto [pc, -54]
+	103: __unuse__ null, null, null
+	104: mov t42, e_Scp0
+	105: def t43, 1
+	106: add t42, t42, t43
+	107: mov e_Scp0, t42
+	108: goto [pc, -69]
+	109: __unuse__ null, null, null
+	110: mov t44, d_Scp1
+	111: def t45, 1
+	112: sub t44, t44, t45
+	113: mov d_Scp1, t44
+	114: goto [pc, -84]
+	115: __unuse__ null, null, null
+	116: mov t46, c_Scp1
+	117: def t47, 1
+	118: add t46, t46, t47
+	119: mov c_Scp1, t46
+	120: goto [pc, -99]
+	121: __unuse__ null, null, null
+	122: mov t48, b_Scp1
+	123: def t49, 2
+	124: sub t48, t48, t49
+	125: mov b_Scp1, t48
+	126: goto [pc, -114]
+	127: __unuse__ null, null, null
+	128: mov t50, a_Scp1
+	129: mov t51, b_Scp1
+	130: add t51, t51, d_Scp1
+	131: add t50, t50, t51
+	132: add t50, t50, c_Scp1
+	133: mov t52, e_Scp0
+	134: add t52, t52, d_Scp1
+	135: sub t52, t52, g_Scp0
+	136: add t52, t52, h_Scp0
+	137: sub t50, t50, t52
+	138: return t50
+end
+
+int getarray(int* arr)
+end
+
+int getch()
+end
+
+int getfarray(float* arr)
+end
+
+float getfloat()
+end
+
+int getint()
+end
+
+int main()
+	0: call null, global()
+	1: def t53, 1
+	2: mov g_Scp0, t53
+	3: def t54, 2
+	4: mov h_Scp0, t54
+	5: def t55, 4
+	6: mov e_Scp0, t55
+	7: def t56, 6
+	8: mov f_Scp0, t56
+	9: call t57, EightWhile()
+	10: return t57
+end
+
+void putarray(int n,int* arr)
+end
+
+void putch(int i)
+end
+
+void putfarray(int n,float* arr)
+end
+
+void putfloat(float f)
+end
+
+void putint(int i)
+end
+
+GVT:
+	e_Scp0 int 0
+	f_Scp0 int 0
+	g_Scp0 int 0
+	h_Scp0 int 0

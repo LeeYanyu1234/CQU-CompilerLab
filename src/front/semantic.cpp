@@ -1104,18 +1104,18 @@ void frontend::Analyzer::analyzeUnaryExp(UnaryExp *root, vector<ir::Instruction 
         }
         else if (unaryOp->op == TokenType::NOT) // '!'也需要操作
         {
-            if (unaryExp->t == Type::IntLiteral || unaryExp->t == Type::FloatLiteral) // 如果是常量或字面量，编译阶段可以改变正负
+            if (unaryExp->t == Type::IntLiteral || unaryExp->t == Type::FloatLiteral) // 如果是常量或字面量，编译阶段可以取反
             {
-                unaryExp->v = unaryExp->t == Type::IntLiteral ? TOS(-std::stoi(unaryExp->v)) : TOS(-std::stof(unaryExp->v));
+                unaryExp->v = unaryExp->t == Type::IntLiteral ? TOS(!std::stoi(unaryExp->v)) : TOS(!std::stof(unaryExp->v));
                 COPY_EXP_NODE(unaryExp, root)
             }
-            else // 如果是变量，需要通过指令改变正负
+            else // 如果是变量，需要通过指令取反
             {
                 Operand tmpVar = Operand(unaryExp->v, unaryExp->t);
                 if (unaryExp->t == Type::Int)
                 {
                     Operand des = Operand(getTmp(), Type::Int);
-                    buffer.push_back(new Instruction({"0", Type::IntLiteral}, {tmpVar}, {des}, {Operator::sub}));
+                    buffer.push_back(new Instruction({"0", Type::IntLiteral}, {tmpVar}, {des}, {Operator::eq}));
                     root->v = des.name;
                     root->t = des.type;
                 }
