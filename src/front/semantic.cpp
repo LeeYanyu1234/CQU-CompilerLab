@@ -287,9 +287,11 @@ void frontend::Analyzer::analyzeFuncDef(FuncDef *root)
     }
     curFuncPtr = new Function(funcName->v, fParams, funcType->t); // 创建当前函数的指针
     symbol_table.functions[funcName->v] = curFuncPtr;             // 将函数添加到符号表
+
     GET_NODE_PTR(Block, block, root->children.size() - 1)
     analyzeBlock(block, curFuncPtr->InstVec); // 分析函数的指令，指令需要放到函数指令集内
-    symbol_table.exit_scope();                // 分析完block后退出函数作用域
+
+    symbol_table.exit_scope(); // 分析完block后退出函数作用域
 
     if (curFuncPtr->InstVec.back()->op != Operator::_return)
     {
@@ -371,24 +373,26 @@ void frontend::Analyzer::analyzeFuncFParam(FuncFParam *root, vector<ir::Operand>
 
     vector<int> dimension;
     int size;
-    if (root->children.size() > 2) // 如果是数组，初始size设置为1
+    if (root->children.size() > 2) // 如果是数组
     {
-        assert(0 && "to be continue");
-        // size = 1;
-        // //* 解析每一维的大小，并计算总大小
-        // for (int i = 2; i < root->children.size(); i += 3) // { '[' ConstExp ']' }
-        // {
-        //     if (MATCH_NODE_TYPE(NodeType::CONSTEXP, i))
-        //     {
-        //         GET_NODE_PTR(ConstExp, constExp, i)
-        //         analyzeConstExp(constExp);
-        //         assert(constExp->t == Type::IntLiteral && std::stoi(constExp->v) >= 0); // constExp一定是非负整数
-        //         dimension.push_back(std::stoi(constExp->v));
-        //         size *= std::stoi(constExp->v);
-        //     }
-        //     else
-        //         break;
-        // }
+        // assert(0 && "to be continue");
+        if (bType->t == Type::Int) // 如果是整型数组，需要修改参数类型为整型指针
+        {
+            bType->t = Type::IntPtr;
+        }
+        else // 如果是浮点型数组，需要修改参数类型为浮点型指针
+        {
+            bType->t == Type::FloatPtr;
+        }
+        size = -1;
+        dimension.push_back(-1); // 第一维的大小未知
+        for (int i = 5; i < root->children.size(); i += 2)
+        {
+            GET_NODE_PTR(ConstExp, constExp, i)
+            analyzeConstExp(constExp);
+            dimension.push_back(std::stoi(constExp->v));
+            size *= std::stoi(constExp->v);
+        }
     }
     else // 如果只是变量，大小设置为0
         size = 0;
@@ -484,9 +488,15 @@ void frontend::Analyzer::analyzeStmt(Stmt *root, vector<ir::Instruction *> &buff
             {
                 buffer.push_back(new Instruction({rValVar}, {}, {lValVar}, {Operator::mov}));
             }
+            else
+            {
+                assert(0 && "to be continue");
+            }
         }
         else if (lValVar.type == Type::IntPtr || lValVar.type == Type::FloatPtr) // 左值是数组，进行数组赋值
         {
+            Operand offsetVar = Operand(lVal->offset, Type::Int);
+            buffer.push_back(new Instruction({lValVar}, {offsetVar}, {rValVar}, {Operator::store}));
         }
         else
             assert(0 && "lVal type error");
@@ -598,7 +608,12 @@ void frontend::Analyzer::analyzeStmt(Stmt *root, vector<ir::Instruction *> &buff
 
             if (cond->t == Type::IntLiteral || cond->t == Type::FloatLiteral) // 如果是条件判断语句结果是常量或字面量
             {
-                assert(0 && "to be continue");
+                //* 恒为真添加while语句块，恒为假不加入任何语块
+                if ((cond->t == Type::IntLiteral && std::stoi(cond->v) != 0) || (cond->t == Type::FloatLiteral && std::stof(cond->v) != 0))
+                { // 恒为真
+                    buffer.insert(buffer.end(), whileInst.begin(), whileInst.end());
+                    buffer.push_back(new Instruction({}, {}, {TOS(-int(whileInst.size())), Type::IntLiteral}, {Operator::_goto}));
+                }
             }
             else
             {
@@ -1057,7 +1072,7 @@ void frontend::Analyzer::analyzeUnaryExp(UnaryExp *root, vector<ir::Instruction 
 
         if (returnType == Type::null)
         {
-            buffer.push_back(new ir::CallInst({funcName->v, args, {}}));
+            buffer.push_back(new ir::CallInst(funcName->v, args, {}));
             root->t = Type::null;
         }
         else
@@ -1168,9 +1183,10 @@ void frontend::Analyzer::analyzePrimaryExp(PrimaryExp *root, vector<ir::Instruct
             {
                 if (lVal->t == Type::IntPtr)
                 {
-                    buffer.push_back(new Instruction({lValVar}, {offsetVar}, {offsetVar}, {Operator::load}));
-                    root->v = offsetVar.name;
-                    root->t = offsetVar.type;
+                    auto tmpVar = Operand(getTmp(), Type::Int);
+                    buffer.push_back(new Instruction({lValVar}, {offsetVar}, {tmpVar}, {Operator::load}));
+                    root->v = tmpVar.name;
+                    root->t = tmpVar.type;
                 }
                 else
                     assert(0 && "to be continue");
@@ -1704,11 +1720,22 @@ void frontend::Analyzer::analyzeFuncRParams(FuncRParams *root, vector<ir::Instru
         Operand arg = Operand(exp->v, exp->t);
         if (fParam.type == Type::Int)
         {
+            if (arg.type == Type::Int || arg.type == Type::IntLiteral)
+            {
+                args.push_back(arg);
+            }
+            else
+            {
+                assert(0 && "to be continue");
+            }
+        }
+        else if (fParam.type == Type::IntPtr)
+        {
             args.push_back(arg);
         }
         else
         {
-            assert("to be continue");
+            assert(0 && "to be continue");
         }
     }
 }
