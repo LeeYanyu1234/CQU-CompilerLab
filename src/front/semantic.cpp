@@ -299,8 +299,8 @@ void frontend::Analyzer::analyzeFuncDef(FuncDef *root)
         //* 部分main函数可能没有return，需要自动添加一条return 0;
         else if (funcName->v == "main")
             curFuncPtr->addInst(new Instruction({"0", ir::Type::IntLiteral}, {}, {}, {Operator::_return}));
-        else
-            assert(0 && "function no return");
+        // else
+        //     assert(0 && "function no return");
     }
 }
 
