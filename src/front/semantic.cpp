@@ -2052,7 +2052,7 @@ void frontend::Analyzer::analyzeEqExp(EqExp *root, vector<ir::Instruction *> &bu
                         assert(0 && "to be continue");
                     }
                 }
-                else if (term->token.type == TokenType::MINU)
+                else if (term->token.type == TokenType::NEQ)
                 {
                     if (op1.type == Type::Int && op2.type == Type::Int)
                     {
