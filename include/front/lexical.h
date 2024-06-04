@@ -50,9 +50,6 @@ namespace frontend
          */
         DFA();
 
-        /**
-         * @brief destructor
-         */
         ~DFA();
 
         // the meaning of copy and assignment for a DFA is not clear, so we do not allow them

@@ -270,7 +270,7 @@ bool frontend::DFA::next(char input, Token &buf)
             cur_state = frontend::State::IntLiteral; // 转换到IntLiteral状态
             cur_str += input;
         }
-        //? 在lab2中出现了这样的情况，可能会出现以小数点开头的小数
+        //? 在实验2中出现了这样的情况，可能会出现以小数点开头的小数
         else if (input == '.') // 读入一个小数点
         {
             cur_state = frontend::State::FloatLiteral; // 转换到FloatLiteral状态

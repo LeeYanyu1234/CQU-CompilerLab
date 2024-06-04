@@ -99,23 +99,21 @@ namespace frontend
      */
     struct Term : AstNode
     {
+        // TODO; lab2todo21 struct Term
+        string v;    // 传递字符串值
         Token token; // 终结点token
         Term(Token t, AstNode *p = nullptr);
     };
 
     struct CompUnit : AstNode
     {
-        /**
-         * @brief constructor
-         */
+
         CompUnit(AstNode *p = nullptr);
     };
 
     struct Decl : AstNode
     {
-        /**
-         * @brief constructor
-         */
+
         Decl(AstNode *p = nullptr);
     };
 
@@ -124,9 +122,6 @@ namespace frontend
         string n;
         Type t;
 
-        /**
-         * @brief constructor
-         */
         FuncDef(AstNode *p = nullptr);
     };
 
@@ -134,19 +129,13 @@ namespace frontend
     {
         Type t;
 
-        /**
-         * @brief constructor
-         */
         ConstDecl(AstNode *p = nullptr);
     };
 
     struct BType : AstNode
     {
-        Type t;
+        Type t; // 用于传递标识符类型
 
-        /**
-         * @brief constructor
-         */
         BType(AstNode *p = nullptr);
     };
 
@@ -154,9 +143,6 @@ namespace frontend
     {
         std::string arr_name;
 
-        /**
-         * @brief constructor
-         */
         ConstDef(AstNode *p = nullptr);
     };
 
@@ -165,9 +151,6 @@ namespace frontend
         string v;
         Type t;
 
-        /**
-         * @brief constructor
-         */
         ConstInitVal(AstNode *p = nullptr);
     };
 
@@ -175,71 +158,53 @@ namespace frontend
     {
         Type t;
 
-        /**
-         * @brief constructor
-         */
         VarDecl(AstNode *p = nullptr);
     };
 
     struct VarDef : AstNode
     {
-        std::string arr_name;
+        std::string arr_name; // 变量名
 
-        /**
-         * @brief constructor
-         */
         VarDef(AstNode *p = nullptr);
     };
 
     struct InitVal : AstNode
     {
         bool is_computable = false;
-        string v;
-        Type t;
+        string v; // 向下传递变量名
+        Type t;   // 向下传递变量类型
 
-        /**
-         * @brief constructor
-         */
         InitVal(AstNode *p = nullptr);
     };
 
     struct FuncType : AstNode
     {
-        /**
-         * @brief constructor
-         */
+        // TODO; lab2todo20 struct FuncType
+        Type t; // 用于传递函数返回值类型
         FuncType(AstNode *p = nullptr);
     };
 
     struct FuncFParam : AstNode
     {
-        /**
-         * @brief constructor
-         */
+
         FuncFParam(AstNode *p = nullptr);
     };
 
     struct FuncFParams : AstNode
     {
-        /**
-         * @brief constructor
-         */
+
         FuncFParams(AstNode *p = nullptr);
     };
 
     struct Block : AstNode
     {
-        /**
-         * @brief constructor
-         */
+
         Block(AstNode *p = nullptr);
     };
 
     struct BlockItem : AstNode
     {
-        /**
-         * @brief constructor
-         */
+
         BlockItem(AstNode *p = nullptr);
     };
 
@@ -249,9 +214,6 @@ namespace frontend
         std::set<ir::Instruction *> jump_eow; // jump to end of while
         std::set<ir::Instruction *> jump_bow; // jump to begin of while
 
-        /**
-         * @brief constructor
-         */
         Stmt(AstNode *p = nullptr);
     };
 
@@ -275,9 +237,6 @@ namespace frontend
         string v;
         Type t;
 
-        /**
-         * @brief constructor
-         */
         Cond(AstNode *p = nullptr);
     };
 
@@ -289,10 +248,12 @@ namespace frontend
      */
     struct LVal : AstNode
     {
+        // TODO; lab2todo31 struct LVal
         bool is_computable = false;
-        string v; // 左值表达式的值
-        Type t;   // 左值表达式的类型
-        int i;    // array index, legal if t is IntPtr or FloatPtr
+        string v;      // 左值表达式的值
+        Type t;        // 左值表达式的类型
+        bool isPtr;    // 左值是否是指针
+        string offset; // array index, legal if t is IntPtr or FloatPtr
 
         LVal(AstNode *p = nullptr);
     };
@@ -342,19 +303,14 @@ namespace frontend
 
     struct UnaryOp : AstNode
     {
-        TokenType op;
+        TokenType op; // 单目运算符类型
 
-        /**
-         * @brief constructor
-         */
         UnaryOp(AstNode *p = nullptr);
     };
 
     struct FuncRParams : AstNode
     {
-        /**
-         * @brief constructor
-         */
+
         FuncRParams(AstNode *p = nullptr);
     };
 
@@ -364,9 +320,6 @@ namespace frontend
         string v;
         Type t;
 
-        /**
-         * @brief constructor
-         */
         MulExp(AstNode *p = nullptr);
     };
 
@@ -376,9 +329,6 @@ namespace frontend
         string v;
         Type t;
 
-        /**
-         * @brief constructor
-         */
         AddExp(AstNode *p = nullptr);
     };
 
@@ -388,9 +338,6 @@ namespace frontend
         string v;
         Type t = Type::Int;
 
-        /**
-         * @brief constructor
-         */
         RelExp(AstNode *p = nullptr);
     };
 
@@ -400,9 +347,6 @@ namespace frontend
         string v;
         Type t = Type::Int;
 
-        /**
-         * @brief constructor
-         */
         EqExp(AstNode *p = nullptr);
     };
 
@@ -412,9 +356,6 @@ namespace frontend
         string v;
         Type t = Type::Int;
 
-        /**
-         * @brief constructor
-         */
         LAndExp(AstNode *p = nullptr);
     };
 
@@ -424,21 +365,15 @@ namespace frontend
         string v;
         Type t = Type::Int;
 
-        /**
-         * @brief constructor
-         */
         LOrExp(AstNode *p = nullptr);
     };
 
     struct ConstExp : AstNode
     {
         bool is_computable = true;
-        string v;
+        string v; // 数值，一定是非负整数
         Type t;
 
-        /**
-         * @brief constructor
-         */
         ConstExp(AstNode *p = nullptr);
     };
 
