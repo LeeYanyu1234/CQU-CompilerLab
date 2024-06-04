@@ -513,7 +513,19 @@ void frontend::Analyzer::analyzeStmt(Stmt *root, vector<ir::Instruction *> &buff
 
             if (cond->t == Type::IntLiteral || cond->t == Type::FloatLiteral) // 如果条件判断结果为字面量，可以静态判断，只加入会执行的语句
             {
-                assert(0 && "to be continue");
+                //* 恒为真添加if语句块，恒为假添加else语句块
+                if ((cond->t == Type::IntLiteral && std::stoi(cond->v) != 0) || (cond->t == Type::FloatLiteral && std::stof(cond->v) != 0))
+                { // 恒为真
+                    buffer.insert(buffer.end(), ifInst.begin(), ifInst.end());
+                }
+                else
+                { // 恒为假
+                    if (root->children.size() > 5)
+                    {
+                        GET_NODE_PTR(Stmt, stmt, 6)
+                        analyzeStmt(stmt, buffer);
+                    }
+                }
             }
             else // 编译时不能确定，需要动态判断
             {
@@ -549,15 +561,60 @@ void frontend::Analyzer::analyzeStmt(Stmt *root, vector<ir::Instruction *> &buff
         }
         else if (term->token.type == TokenType::WHILETK) // 'while' '(' Cond ')' Stmt
         {
-            assert(0 && "to be continue");
+            //* while需要每一次都跳转回开头再次进行条件判断，所以需要记录下while开始的位置
+            int pos = buffer.size(); // while开始的位置
+            GET_NODE_PTR(Cond, cond, 2)
+            analyzeCond(cond, buffer);
+
+            vector<Instruction *> whileInst; // while语句块
+            GET_NODE_PTR(Stmt, stmt, 4)
+            analyzeStmt(stmt, whileInst);
+
+            if (cond->t == Type::Int || cond->t == Type::Float) // 如果是条件判断语句结果是变量
+            {
+                if (cond->t == Type::Int)
+                {
+                    buffer.push_back(new Instruction({cond->v, cond->t}, {}, {"2", Type::IntLiteral}, {Operator::_goto}));
+                }
+                else
+                {
+                    assert(0 && "to be continue");
+                }
+                buffer.push_back(new Instruction({}, {}, {TOS(whileInst.size() + 2), Type::IntLiteral}, {Operator::_goto}));
+            }
+
+            //* 逐条查找while语块中的break和continue语句
+            for (int i = 0; i < whileInst.size(); i++)
+            {
+                if (whileInst[i]->op1.name == "break")
+                {
+                    whileInst[i] = new Instruction({}, {}, {TOS(whileInst.size() - i + 1), Type::IntLiteral}, {Operator::_goto});
+                }
+                else if (whileInst[i]->op1.name == "continue")
+                {
+                    whileInst[i] = new Instruction({}, {}, {TOS(pos - int(buffer.size()) - i), Type::IntLiteral}, {Operator::_goto});
+                }
+            }
+
+            if (cond->t == Type::IntLiteral || cond->t == Type::FloatLiteral) // 如果是条件判断语句结果是常量或字面量
+            {
+                assert(0 && "to be continue");
+            }
+            else
+            {
+                buffer.insert(buffer.end(), whileInst.begin(), whileInst.end());
+                buffer.push_back(new Instruction({}, {}, {TOS(pos - int(buffer.size())), Type::IntLiteral}, {Operator::_goto}));
+                buffer.push_back(new Instruction({}, {}, {}, {Operator::__unuse__}));
+            }
         }
+        //* break和continue都不在本地处理，只是生成一条占位指令，等到while循环处理完再一并处理
         else if (term->token.type == TokenType::BREAKTK) // 'break' ';'
         {
-            assert(0 && "to be continue");
+            buffer.push_back(new Instruction({"break"}, {}, {}, {Operator::__unuse__}));
         }
         else if (term->token.type == TokenType::CONTINUETK) // 'continue' ';'
         {
-            assert(0 && "to be continue");
+            buffer.push_back(new Instruction({"continue"}, {}, {}, {Operator::__unuse__}));
         }
         else if (term->token.type == TokenType::RETURNTK) // 'return' [Exp] ';' |
         {
@@ -1039,15 +1096,34 @@ void frontend::Analyzer::analyzeUnaryExp(UnaryExp *root, vector<ir::Instruction 
                     root->v = des.name;
                     root->t = des.type;
                 }
-                else
+                else // Float
                 {
                     assert(0 && "to be continue");
                 }
             }
         }
-        else if (unaryOp->op == TokenType::NOT) // ''
+        else if (unaryOp->op == TokenType::NOT) // '!'也需要操作
         {
-            assert(0 && "to be continue");
+            if (unaryExp->t == Type::IntLiteral || unaryExp->t == Type::FloatLiteral) // 如果是常量或字面量，编译阶段可以改变正负
+            {
+                unaryExp->v = unaryExp->t == Type::IntLiteral ? TOS(-std::stoi(unaryExp->v)) : TOS(-std::stof(unaryExp->v));
+                COPY_EXP_NODE(unaryExp, root)
+            }
+            else // 如果是变量，需要通过指令改变正负
+            {
+                Operand tmpVar = Operand(unaryExp->v, unaryExp->t);
+                if (unaryExp->t == Type::Int)
+                {
+                    Operand des = Operand(getTmp(), Type::Int);
+                    buffer.push_back(new Instruction({"0", Type::IntLiteral}, {tmpVar}, {des}, {Operator::sub}));
+                    root->v = des.name;
+                    root->t = des.type;
+                }
+                else // Float
+                {
+                    assert(0 && "to be continue");
+                }
+            }
         }
         else
             assert(0 && "UnaryOp type error");
@@ -1066,7 +1142,7 @@ void frontend::Analyzer::analyzeUnaryExp(UnaryExp *root, vector<ir::Instruction 
 void frontend::Analyzer::analyzePrimaryExp(PrimaryExp *root, vector<ir::Instruction *> &buffer)
 {
     // TODO; lab2todo17 analyzePrimaryExp
-    if (root->children.size() > 1) // '(' Exp ')'，设计运算符优先级
+    if (root->children.size() > 1) // '(' Exp ')'，运算符优先级
     {
         GET_NODE_PTR(Exp, exp, 1)
         analyzeExp(exp, buffer);

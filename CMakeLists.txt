@@ -3,7 +3,8 @@ project(compiler)
 
 # compile flags
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall")  # 调试信息和所有警告
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")  # 调试信息和所有警告
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall")  # 调试信息和所有警告
 
 set(CMAKE_C_COMPILER "/usr/bin/x86_64-linux-gnu-gcc-7")
 set(CMAKE_CXX_COMPILER "/usr/bin/x86_64-linux-gnu-g++-7")
