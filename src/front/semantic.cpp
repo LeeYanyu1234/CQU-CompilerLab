@@ -1066,9 +1066,11 @@ void frontend::Analyzer::analyzeUnaryExp(UnaryExp *root, vector<ir::Instruction 
 void frontend::Analyzer::analyzePrimaryExp(PrimaryExp *root, vector<ir::Instruction *> &buffer)
 {
     // TODO; lab2todo17 analyzePrimaryExp
-    if (root->children.size() > 1) // '(' Exp ')'
+    if (root->children.size() > 1) // '(' Exp ')'，设计运算符优先级
     {
-        assert(0 && "to be continue");
+        GET_NODE_PTR(Exp, exp, 1)
+        analyzeExp(exp, buffer);
+        COPY_EXP_NODE(exp, root);
     }
     else if (MATCH_NODE_TYPE(NodeType::LVAL, 0)) // LVal
     {
