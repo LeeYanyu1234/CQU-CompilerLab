@@ -303,7 +303,7 @@ namespace frontend
 
     struct UnaryOp : AstNode
     {
-        TokenType op;
+        TokenType op; // 单目运算符
 
         UnaryOp(AstNode *p = nullptr);
     };

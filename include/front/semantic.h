@@ -161,6 +161,12 @@ namespace frontend
         void analyzeConstDef(ConstDef *, vector<ir::Instruction *> &, ir::Type);
         void analyzeConstInitVal(ConstInitVal *, vector<ir::Instruction *> &, int, int, int, vector<int> &);
         void analyzeFuncRParams(FuncRParams *, vector<ir::Instruction *> &, vector<ir::Operand> &, vector<ir::Operand> &);
+        void analyzeCond(Cond *, vector<ir::Instruction *> &);
+        void analyzeLOrExp(LOrExp *, vector<ir::Instruction *> &);
+        void analyzeLAndExp(LAndExp *, vector<ir::Instruction *> &);
+        void analyzeEqExp(EqExp *, vector<ir::Instruction *> &);
+        void analyzeRelExp(RelExp *, vector<ir::Instruction *> &);
+        void analyzeUnaryOp(UnaryOp *);
 
         ir::Operand IntLiteral2Int(string, vector<ir::Instruction *> &);
         ir::Operand FloatLiteral2Float(string, vector<ir::Instruction *> &);

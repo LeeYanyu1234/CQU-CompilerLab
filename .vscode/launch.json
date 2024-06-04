@@ -21,7 +21,8 @@
                 // "./test/testcase/basic/17_div.sy",
                 // "./test/testcase/basic/18_divc.sy",
                 // "./test/testcase/basic/20_rem.sy",
-                "./test/testcase/basic/21_if_test2.sy",
+                // "./test/testcase/basic/21_if_test2.sy",
+                "./test/testcase/basic/22_if_test3.sy",
                 "-s2",
                 // "-e",
                 "-o",
@@ -40,7 +41,7 @@
                 }
             ],
             "miDebuggerPath": "/usr/bin/gdb",
-            // "preLaunchTask": "build",
+            "preLaunchTask": "build",
             "logging": {
                 "engineLogging": true
             }

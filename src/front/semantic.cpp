@@ -491,10 +491,75 @@ void frontend::Analyzer::analyzeStmt(Stmt *root, vector<ir::Instruction *> &buff
         else
             assert(0 && "lVal type error");
     }
-    else
+    else if (MATCH_NODE_TYPE(NodeType::BLOCK, 0)) // Block，类似于if(){}的语句块
+    {
+        //* 这里也需要进入新的作用域
+        symbol_table.add_scope();
+        GET_NODE_PTR(Block, block, 0)
+        analyzeBlock(block, buffer);
+        symbol_table.exit_scope();
+    }
+    else if (MATCH_NODE_TYPE(NodeType::TERMINAL, 0))
     {
         GET_NODE_PTR(Term, term, 0)
-        if (term->token.type == TokenType::RETURNTK) // 'return' [Exp] ';' |
+        if (term->token.type == TokenType::IFTK) // 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
+        {
+            GET_NODE_PTR(Cond, cond, 2)
+            analyzeCond(cond, buffer);
+
+            vector<Instruction *> ifInst; // if语句的语句块
+            GET_NODE_PTR(Stmt, stmt, 4)
+            analyzeStmt(stmt, ifInst);
+
+            if (cond->t == Type::IntLiteral || cond->t == Type::FloatLiteral) // 如果条件判断结果为字面量，可以静态判断，只加入会执行的语句
+            {
+                assert(0 && "to be continue");
+            }
+            else // 编译时不能确定，需要动态判断
+            {
+                //* 计算出if的条件判断后，添加一条goto语句
+                if (cond->t == Type::Float)
+                {
+                    assert(0 && "to be continue");
+                }
+                else
+                {
+                    buffer.push_back(new Instruction({cond->v, cond->t}, {}, {"2", Type::IntLiteral}, {Operator::_goto}));
+                }
+
+                //* 判断是否包含else语句
+                if (root->children.size() > 5) // 包含else语句
+                {
+                    buffer.push_back(new Instruction({}, {}, {TOS(ifInst.size() + 2), Type::IntLiteral}, {Operator::_goto}));
+                    buffer.insert(buffer.end(), ifInst.begin(), ifInst.end());
+
+                    vector<Instruction *> elseInst; // else语句的语句块
+                    GET_NODE_PTR(Stmt, stmt, 6)
+                    analyzeStmt(stmt, elseInst);
+                    buffer.push_back(new Instruction({}, {}, {TOS(elseInst.size() + 1), Type::IntLiteral}, {Operator::_goto}));
+                    buffer.insert(buffer.end(), elseInst.begin(), elseInst.end());
+                }
+                else // 不包含else语句
+                {
+                    buffer.push_back(new Instruction({}, {}, {TOS(ifInst.size() + 1), Type::IntLiteral}, {Operator::_goto}));
+                    buffer.insert(buffer.end(), ifInst.begin(), ifInst.end());
+                }
+                buffer.push_back(new Instruction({}, {}, {}, {Operator::__unuse__}));
+            }
+        }
+        else if (term->token.type == TokenType::WHILETK) // 'while' '(' Cond ')' Stmt
+        {
+            assert(0 && "to be continue");
+        }
+        else if (term->token.type == TokenType::BREAKTK) // 'break' ';'
+        {
+            assert(0 && "to be continue");
+        }
+        else if (term->token.type == TokenType::CONTINUETK) // 'continue' ';'
+        {
+            assert(0 && "to be continue");
+        }
+        else if (term->token.type == TokenType::RETURNTK) // 'return' [Exp] ';' |
         {
             if (root->children.size() == 2) // 不存在可选项[Exp]，只有'return' ';'
             {
@@ -512,6 +577,14 @@ void frontend::Analyzer::analyzeStmt(Stmt *root, vector<ir::Instruction *> &buff
             }
             else
                 assert(0 && "function return error");
+        }
+    }
+    else // [Exp] ';'
+    {
+        if (root->children.size() > 1)
+        {
+            GET_NODE_PTR(Exp, exp, 0)
+            analyzeExp(exp, buffer);
         }
     }
 }
@@ -940,7 +1013,44 @@ void frontend::Analyzer::analyzeUnaryExp(UnaryExp *root, vector<ir::Instruction 
     }
     else if (MATCH_NODE_TYPE(NodeType::UNARYOP, 0)) // UnaryOp UnaryExp
     {
-        assert(0 && "to be continue");
+        GET_NODE_PTR(UnaryOp, unaryOp, 0)
+        analyzeUnaryOp(unaryOp);
+        GET_NODE_PTR(UnaryExp, unaryExp, 1)
+        analyzeUnaryExp(unaryExp, buffer);
+
+        if (unaryOp->op == TokenType::PLUS) // 如果是'+'，不需要操作，直接赋值
+        {
+            COPY_EXP_NODE(unaryExp, root)
+        }
+        else if (unaryOp->op == TokenType::MINU) // '-'需要操作
+        {
+            if (unaryExp->t == Type::IntLiteral || unaryExp->t == Type::FloatLiteral) // 如果是常量或字面量，编译阶段可以改变正负
+            {
+                unaryExp->v = unaryExp->t == Type::IntLiteral ? TOS(-std::stoi(unaryExp->v)) : TOS(-std::stof(unaryExp->v));
+                COPY_EXP_NODE(unaryExp, root)
+            }
+            else // 如果是变量，需要通过指令改变正负
+            {
+                Operand tmpVar = Operand(unaryExp->v, unaryExp->t);
+                if (unaryExp->t == Type::Int)
+                {
+                    Operand des = Operand(getTmp(), Type::Int);
+                    buffer.push_back(new Instruction({"0", Type::IntLiteral}, {tmpVar}, {des}, {Operator::sub}));
+                    root->v = des.name;
+                    root->t = des.type;
+                }
+                else
+                {
+                    assert(0 && "to be continue");
+                }
+            }
+        }
+        else if (unaryOp->op == TokenType::NOT) // ''
+        {
+            assert(0 && "to be continue");
+        }
+        else
+            assert(0 && "UnaryOp type error");
     }
     else
         assert(0 && "analyzeUnaryExp error");
@@ -958,6 +1068,7 @@ void frontend::Analyzer::analyzePrimaryExp(PrimaryExp *root, vector<ir::Instruct
     // TODO; lab2todo17 analyzePrimaryExp
     if (root->children.size() > 1) // '(' Exp ')'
     {
+        assert(0 && "to be continue");
     }
     else if (MATCH_NODE_TYPE(NodeType::LVAL, 0)) // LVal
     {
@@ -1003,7 +1114,7 @@ void frontend::Analyzer::analyzePrimaryExp(PrimaryExp *root, vector<ir::Instruct
 }
 
 /**
- * @brief 20数值 Number -> IntConst | floatConst
+ * @brief 20数值 Number -> IntConst | FloatConst
  * @param root
  * @param buffer
  * @author LeeYanyu1234 (343820386@qq.com)
@@ -1015,9 +1126,26 @@ void frontend::Analyzer::analyzeNumber(Number *root, vector<ir::Instruction *> &
     GET_NODE_PTR(Term, term, 0)
     if (term->token.type == TokenType::INTLTR) // IntConst
     {
-        root->t = Type::IntLiteral;  // 补充Number节点的属性为整型常量
-        root->v = term->token.value; // 补充Number节点的值为value
+        root->t = Type::IntLiteral; // 补充Number节点的属性为整型常量
+
+        //* 立即数整型变量可能是二、八、十六进制，需要进行转换
+        const string &tokenVal = term->token.value;                                                     // token的字面量
+        if (tokenVal.length() >= 3 && tokenVal[0] == '0' && (tokenVal[1] == 'x' || tokenVal[1] == 'X')) // 十六进制
+            root->v = std::to_string(std::stoi(tokenVal, nullptr, 16));
+        else if (tokenVal.length() >= 3 && tokenVal[0] == '0' && (tokenVal[1] == 'b' || tokenVal[1] == 'B')) // 二进制
+            root->v = std::to_string(std::stoi(tokenVal.substr(2), nullptr, 2));
+        else if (tokenVal.length() >= 2 && tokenVal[0] == '0') // 八进制
+            root->v = std::to_string(std::stoi(tokenVal, nullptr, 8));
+        else // 十进制
+            root->v = tokenVal;
     }
+    else if (term->token.type == TokenType::FLOATLTR) // FloatConst
+    {
+        root->t = Type::FloatLiteral;
+        root->v = term->token.value;
+    }
+    else
+        assert(0 && "analyzeNumber error");
 }
 
 /**
@@ -1489,6 +1617,7 @@ void frontend::Analyzer::analyzeConstInitVal(ConstInitVal *root, vector<ir::Inst
  */
 void frontend::Analyzer::analyzeFuncRParams(FuncRParams *root, vector<ir::Instruction *> &buffer, vector<ir::Operand> &fParams, vector<ir::Operand> &args)
 {
+    // TODO; lab2todo38 analyzeFuncRParams
     for (int i = 0, curParam = 0; i < root->children.size(); i += 2)
     {
         GET_NODE_PTR(Exp, exp, i)
@@ -1507,7 +1636,610 @@ void frontend::Analyzer::analyzeFuncRParams(FuncRParams *root, vector<ir::Instru
 }
 
 /**
- * @brief 整型常量转换为整型变量
+ * @brief 18条件表达式 Cond -> LOrExp
+ * @param root
+ * @param buffer
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-03
+ */
+void frontend::Analyzer::analyzeCond(Cond *root, vector<ir::Instruction *> &buffer)
+{
+    // TODO; lab2todo39 analyzeCond
+    GET_NODE_PTR(LOrExp, lOrExp, 0)
+    analyzeLOrExp(lOrExp, buffer);
+    COPY_EXP_NODE(lOrExp, root)
+}
+
+/**
+ * @brief 30逻辑或表达式 LOrExp -> LAndExp [ '||' LOrExp ]
+ * @param root
+ * @param buffer
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-03
+ */
+void frontend::Analyzer::analyzeLOrExp(LOrExp *root, vector<ir::Instruction *> &buffer)
+{
+    // TODO; lab2todo40 analyzeLOrExp
+    GET_NODE_PTR(LAndExp, lAndExp, 0)
+    vector<Instruction *> lAndExpInst; // LAndExp语句的指令块
+    analyzeLAndExp(lAndExp, lAndExpInst);
+
+    if (root->children.size() == 1) // 不包含可选项[ '||' LOrExp ]
+    {
+        buffer.insert(buffer.end(), lAndExpInst.begin(), lAndExpInst.end());
+        COPY_EXP_NODE(lAndExp, root);
+    }
+    else // 包含可选项[ '||' LOrExp ]
+    {
+        GET_NODE_PTR(LOrExp, lOrExp, 2)
+        vector<Instruction *> lOrExpInst; // LOrExp语句的指令块
+        analyzeLOrExp(lOrExp, lOrExpInst);
+
+        if ((lAndExp->t == Type::IntLiteral || lAndExp->t == Type::FloatLiteral) && (lOrExp->t == Type::IntLiteral || lOrExp->t == Type::FloatLiteral))
+        { // 只含常量和字面量可以静态推导
+            root->t = Type::IntLiteral;
+            if (lAndExp->t == Type::IntLiteral && lOrExp->t == Type::IntLiteral)
+            {
+                root->v = TOS(std::stoi(lAndExp->v) || std::stoi(lOrExp->v));
+            }
+            else
+            {
+                assert(0 && "to be continue");
+            }
+        }
+        else // 含有变量，需要动态推导
+        {
+            //* 这里需要注意短路，如果第一个值为真，那么后续表达式都不能计算
+            if (lAndExp->t == Type::IntLiteral || lAndExp->t == Type::FloatLiteral) // 第一个值为常量或字面量
+            {
+                if ((lAndExp->t == Type::IntLiteral && stoi(lAndExp->v) != 0) || (lAndExp->t == Type::Float && stof(lAndExp->v) != 0))
+                {
+                    root->v = "1";
+                    root->t = Type::IntLiteral;
+                }
+                else // 第一个值不为真，等于第二个表达式
+                {
+                    buffer.insert(buffer.end(), lOrExpInst.begin(), lOrExpInst.end());
+                    COPY_EXP_NODE(lOrExp, root)
+                }
+            }
+            else
+            {
+                Operand op1 = Operand(lAndExp->v, lAndExp->t);
+                Operand op2;
+                if (lOrExp->t == Type::IntLiteral)
+                {
+                    op2 = IntLiteral2Int(lOrExp->v, buffer);
+                }
+                else if (lOrExp->t == Type::FloatLiteral)
+                {
+                    op2 = FloatLiteral2Float(lOrExp->v, buffer);
+                }
+                else
+                {
+                    op2 = Operand(lOrExp->v, lOrExp->t);
+                }
+                Operand des = Operand(getTmp(), Type::Int);
+                buffer.insert(buffer.end(), lAndExpInst.begin(), lAndExpInst.end()); // 把lAndExp表达式的语句插入
+
+                buffer.push_back(new Instruction({op1}, {}, {des}, {Operator::mov}));
+
+                buffer.push_back(new Instruction({des}, {}, {TOS(lOrExpInst.size() + 2), Type::IntLiteral}, {Operator::_goto}));
+                buffer.insert(buffer.end(), lOrExpInst.begin(), lOrExpInst.end());
+                buffer.push_back(new Instruction({des}, {op2}, {des}, {Operator::_or}));
+                root->v = des.name;
+                root->t = des.type;
+            }
+        }
+    }
+}
+
+/**
+ * @brief 29逻辑与表达式 LAndExp -> EqExp [ '&&' LAndExp ]
+ * @param root
+ * @param buffer
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-03
+ */
+void frontend::Analyzer::analyzeLAndExp(LAndExp *root, vector<ir::Instruction *> &buffer)
+{
+    // TODO; lab2todo41 analyzeLAndExp
+    GET_NODE_PTR(EqExp, eqExp, 0)
+    vector<Instruction *> eqExpInst; // eqExp语句的指令块
+    analyzeEqExp(eqExp, eqExpInst);
+
+    if (root->children.size() == 1) // 不包含可选项[ '&&' LAndExp ]
+    {
+        buffer.insert(buffer.end(), eqExpInst.begin(), eqExpInst.end());
+        COPY_EXP_NODE(eqExp, root);
+    }
+    else // 包含可选项[ '&&' LAndExp ]
+    {
+        GET_NODE_PTR(LAndExp, lAndExp, 2)
+        vector<Instruction *> lAndExpInst; // lAndExp语句的指令块
+        analyzeLAndExp(lAndExp, lAndExpInst);
+
+        if ((eqExp->t == Type::IntLiteral || eqExp->t == Type::FloatLiteral) && (lAndExp->t == Type::IntLiteral || lAndExp->t == Type::FloatLiteral))
+        { // 只含常量和字面量可以静态推导
+            root->t = Type::IntLiteral;
+            if (eqExp->t == Type::IntLiteral && lAndExp->t == Type::IntLiteral)
+            {
+                root->v = TOS(std::stoi(eqExp->v) || std::stoi(lAndExp->v));
+            }
+            else
+            {
+                assert(0 && "to be continue");
+            }
+        }
+        else // 含有变量，需要动态推导
+        {
+            //* 这里需要注意短路，如果第一个值为假，那么后续表达式都不能计算
+            if (eqExp->t == Type::IntLiteral || eqExp->t == Type::FloatLiteral) // 第一个值为常量或字面量
+            {
+                if ((eqExp->t == Type::IntLiteral && stoi(eqExp->v) == 0) || (eqExp->t == Type::Float && stof(eqExp->v) == 0))
+                {
+                    root->v = "0";
+                    root->t = Type::IntLiteral;
+                }
+                else // 第一个值为真，等于第二个表达式
+                {
+                    buffer.insert(buffer.end(), lAndExpInst.begin(), lAndExpInst.end());
+                    COPY_EXP_NODE(lAndExp, root)
+                }
+            }
+            else
+            {
+                Operand op1 = Operand(eqExp->v, eqExp->t);
+                Operand op2;
+                if (lAndExp->t == Type::IntLiteral)
+                {
+                    op2 = IntLiteral2Int(lAndExp->v, buffer);
+                }
+                else if (lAndExp->t == Type::FloatLiteral)
+                {
+                    op2 = FloatLiteral2Float(lAndExp->v, buffer);
+                }
+                else
+                {
+                    op2 = Operand(lAndExp->v, lAndExp->t);
+                }
+                Operand des = Operand(getTmp(), Type::Int);
+                buffer.insert(buffer.end(), eqExpInst.begin(), eqExpInst.end());
+
+                Operand tmpVar = Operand(getTmp(), Type::Int);
+                buffer.push_back(new Instruction({op1}, {}, {des}, {Operator::mov}));
+                buffer.push_back(new Instruction({des}, {"0", Type::IntLiteral}, {tmpVar}, {Operator::eq}));
+                buffer.push_back(new Instruction({tmpVar}, {}, {TOS(lAndExpInst.size() + 2), Type::IntLiteral}, {Operator::_goto}));
+                buffer.insert(buffer.end(), lAndExpInst.begin(), lAndExpInst.end());
+                buffer.push_back(new Instruction({des}, {op2}, {des}, {Operator::_and}));
+                root->v = des.name;
+                root->t = des.type;
+            }
+        }
+    }
+}
+
+/**
+ * @brief 28相等性表达式 EqExp -> RelExp { ( '==' | '!=' ) RelExp }
+ * @param root
+ * @param buffer
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-03
+ */
+void frontend::Analyzer::analyzeEqExp(EqExp *root, vector<ir::Instruction *> &buffer)
+{
+    // TODO; lab2todo42 analyzeLEqExp
+    GET_NODE_PTR(RelExp, relExp1, 0)
+    analyzeRelExp(relExp1, buffer);
+
+    int idx = -1;
+    //* 如果表达式中有常量，进行常量计算
+    if (relExp1->t == Type::IntLiteral || relExp1->t == Type::FloatLiteral)
+    {
+        for (int i = 2; i < root->children.size(); i += 2)
+        {
+            vector<Instruction *> relExpInst;
+            GET_NODE_PTR(Term, term, i - 1)
+            GET_NODE_PTR(RelExp, relExp2, i)
+            analyzeRelExp(relExp2, relExpInst);
+            if (relExp2->t == Type::IntLiteral || relExp2->t == Type::FloatLiteral)
+            {
+                if (relExp1->t == Type::IntLiteral && relExp2->t == Type::IntLiteral)
+                {
+                    if (term->token.type == TokenType::EQL)
+                    {
+                        relExp1->v = TOS(std::stoi(relExp1->v) == std::stoi(relExp2->v));
+                    }
+                    else if (term->token.type == TokenType::NEQ)
+                    {
+                        relExp1->v = TOS(std::stoi(relExp1->v) != std::stoi(relExp2->v));
+                    }
+                    else
+                        assert(0 && "EqExp op error");
+                }
+                else if (relExp1->t == Type::IntLiteral && relExp2->t == Type::FloatLiteral)
+                {
+                    relExp1->t = Type::FloatLiteral;
+                    if (term->token.type == TokenType::EQL)
+                    {
+                        relExp1->v = TOS(std::stoi(relExp1->v) == std::stof(relExp2->v));
+                    }
+                    else if (term->token.type == TokenType::NEQ)
+                    {
+                        relExp1->v = TOS(std::stoi(relExp1->v) != std::stof(relExp2->v));
+                    }
+                    else
+                        assert(0 && "EqExp op error");
+                }
+                else if (relExp1->t == Type::FloatLiteral && relExp2->t == Type::IntLiteral)
+                {
+                    if (term->token.type == TokenType::EQL)
+                    {
+                        relExp1->v = TOS(std::stof(relExp1->v) == std::stoi(relExp2->v));
+                    }
+                    else if (term->token.type == TokenType::NEQ)
+                    {
+                        relExp1->v = TOS(std::stof(relExp1->v) != std::stoi(relExp2->v));
+                    }
+                    else
+                        assert(0 && "EqExp op error");
+                }
+                else
+                {
+                    if (term->token.type == TokenType::EQL)
+                    {
+                        relExp1->v = TOS(std::stof(relExp1->v) == std::stof(relExp2->v));
+                    }
+                    else if (term->token.type == TokenType::NEQ)
+                    {
+                        relExp1->v = TOS(std::stof(relExp1->v) != std::stof(relExp2->v));
+                    }
+                    else
+                        assert(0 && "EqExp op error");
+                }
+            }
+            else
+            {
+                idx = i;
+                break;
+            }
+        }
+    }
+
+    if ((relExp1->t == Type::IntLiteral || relExp1->t == Type::FloatLiteral) && idx == -1) // 如果表达式只有常量或字面量
+    {
+        COPY_EXP_NODE(relExp1, root)
+    }
+    else // 表达式中有变量
+    {
+        // 创建操作数1
+        Operand op1;
+        if (idx == -1) // 如果操作数1就是变量
+        {
+            op1.name = relExp1->v;
+            op1.type = relExp1->t;
+            idx = 2;
+        }
+        else // 操作数1是常量或字面量，需要先转换为变量
+        {
+            if (relExp1->t == Type::IntLiteral)
+            {
+                op1 = IntLiteral2Int(relExp1->v, buffer);
+            }
+            else
+            {
+                op1 = FloatLiteral2Float(relExp1->v, buffer);
+            }
+        }
+
+        if (root->children.size() > 1) // 如果包含{ ( '==' | '!=' ) RelExp }
+        {
+            if ((op1.type == Type::Int || op1.type == Type::Float))
+            {
+                auto tmpVar = Operand(getTmp(), op1.type == Type::Int ? Type::Int : Type::Float);
+                Operator instType = (op1.type == Type::Int) ? Operator::mov : Operator::fmov;
+                buffer.push_back(new Instruction(op1, {}, tmpVar, instType));
+                std::swap(op1, tmpVar);
+            }
+
+            for (int i = idx; i < root->children.size(); i += 2)
+            {
+                GET_NODE_PTR(Term, term, i - 1)
+                GET_NODE_PTR(RelExp, relExp2, i)
+                analyzeRelExp(relExp2, buffer);
+
+                // 创建操作数2
+                Operand op2;
+                if (relExp2->t == Type::IntLiteral)
+                {
+                    op2 = IntLiteral2Int(relExp2->v, buffer);
+                }
+                else if (relExp2->t == Type::FloatLiteral)
+                {
+                    op2 = FloatLiteral2Float(relExp2->v, buffer);
+                }
+                else
+                {
+                    op2 = Operand(relExp2->v, relExp2->t);
+                }
+
+                if (term->token.type == TokenType::EQL)
+                {
+                    if (op1.type == Type::Int && op2.type == Type::Int)
+                    {
+                        buffer.push_back(new Instruction(op1, op2, op1, Operator::eq));
+                    }
+                    else
+                    {
+                        assert(0 && "to be continue");
+                    }
+                }
+                else if (term->token.type == TokenType::MINU)
+                {
+                    if (op1.type == Type::Int && op2.type == Type::Int)
+                    {
+                        buffer.push_back(new Instruction(op1, op2, op1, Operator::neq));
+                    }
+                    else
+                    {
+                        assert(0 && "to be continue");
+                    }
+                }
+                else
+                    assert(0 && "EqExp op error");
+            }
+        }
+
+        root->t = op1.type;
+        root->v = op1.name;
+    }
+}
+
+/**
+ * @brief 27关系表达式 RelExp -> AddExp { ( '<' | '>' | '<=' | '>=' ) AddExp }
+ * @param root
+ * @param buffer
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-03
+ */
+void frontend::Analyzer::analyzeRelExp(RelExp *root, vector<ir::Instruction *> &buffer)
+{
+    // TODO; lab2todo43 analyzeLRelExp
+    GET_NODE_PTR(AddExp, addExp1, 0)
+    analyzeAddExp(addExp1, buffer);
+
+    int idx = -1;
+    //* 如果表达式中有常量，进行常量计算
+    if (addExp1->t == Type::IntLiteral || addExp1->t == Type::FloatLiteral)
+    {
+        for (int i = 2; i < root->children.size(); i += 2)
+        {
+            vector<Instruction *> addExpInst;
+            GET_NODE_PTR(Term, term, i - 1)
+            GET_NODE_PTR(AddExp, addExp2, i)
+            analyzeAddExp(addExp2, addExpInst);
+            if (addExp2->t == Type::IntLiteral || addExp2->t == Type::FloatLiteral)
+            {
+                if (addExp1->t == Type::IntLiteral && addExp2->t == Type::IntLiteral)
+                {
+                    if (term->token.type == TokenType::LSS) // <
+                    {
+                        addExp1->v = TOS(std::stoi(addExp1->v) < std::stoi(addExp2->v));
+                    }
+                    else if (term->token.type == TokenType::GTR) // >
+                    {
+                        addExp1->v = TOS(std::stoi(addExp1->v) > std::stoi(addExp2->v));
+                    }
+                    else if (term->token.type == TokenType::LEQ) // <=
+                    {
+                        addExp1->v = TOS(std::stoi(addExp1->v) <= std::stoi(addExp2->v));
+                    }
+                    else if (term->token.type == TokenType::GEQ) // >=
+                    {
+                        addExp1->v = TOS(std::stoi(addExp1->v) >= std::stoi(addExp2->v));
+                    }
+                    else
+                        assert(0 && "RelExp op error");
+                }
+                else if (addExp1->t == Type::IntLiteral && addExp2->t == Type::FloatLiteral)
+                {
+                    addExp1->t = Type::FloatLiteral;
+                    if (term->token.type == TokenType::LSS)
+                    {
+                        addExp1->v = TOS(std::stoi(addExp1->v) < std::stof(addExp2->v));
+                    }
+                    else if (term->token.type == TokenType::GTR)
+                    {
+                        addExp1->v = TOS(std::stoi(addExp1->v) > std::stof(addExp2->v));
+                    }
+                    else if (term->token.type == TokenType::LEQ) // <=
+                    {
+                        addExp1->v = TOS(std::stoi(addExp1->v) <= std::stof(addExp2->v));
+                    }
+                    else if (term->token.type == TokenType::GEQ) // >=
+                    {
+                        addExp1->v = TOS(std::stoi(addExp1->v) >= std::stof(addExp2->v));
+                    }
+                    else
+                        assert(0 && "RelExp op error");
+                }
+                else if (addExp1->t == Type::FloatLiteral && addExp2->t == Type::IntLiteral)
+                {
+                    if (term->token.type == TokenType::LSS) // <
+                    {
+                        addExp1->v = TOS(std::stof(addExp1->v) < std::stoi(addExp2->v));
+                    }
+                    else if (term->token.type == TokenType::GTR) // >
+                    {
+                        addExp1->v = TOS(std::stof(addExp1->v) > std::stoi(addExp2->v));
+                    }
+                    else if (term->token.type == TokenType::LEQ) // <=
+                    {
+                        addExp1->v = TOS(std::stof(addExp1->v) <= std::stoi(addExp2->v));
+                    }
+                    else if (term->token.type == TokenType::GEQ) // >=
+                    {
+                        addExp1->v = TOS(std::stof(addExp1->v) >= std::stoi(addExp2->v));
+                    }
+                    else
+                        assert(0 && "RelExp op error");
+                }
+                else
+                {
+                    if (term->token.type == TokenType::LSS) // <
+                    {
+                        addExp1->v = TOS(std::stof(addExp1->v) < std::stof(addExp2->v));
+                    }
+                    else if (term->token.type == TokenType::GTR) // >
+                    {
+                        addExp1->v = TOS(std::stof(addExp1->v) > std::stof(addExp2->v));
+                    }
+                    else if (term->token.type == TokenType::LEQ) // <=
+                    {
+                        addExp1->v = TOS(std::stof(addExp1->v) <= std::stof(addExp2->v));
+                    }
+                    else if (term->token.type == TokenType::GEQ) // >=
+                    {
+                        addExp1->v = TOS(std::stof(addExp1->v) >= std::stof(addExp2->v));
+                    }
+                    else
+                        assert(0 && "RelExp op error");
+                }
+            }
+            else
+            {
+                idx = i;
+                break;
+            }
+        }
+    }
+
+    if ((addExp1->t == Type::IntLiteral || addExp1->t == Type::FloatLiteral) && idx == -1) // 如果表达式只有常量或字面量
+    {
+        COPY_EXP_NODE(addExp1, root)
+    }
+    else // 表达式中有变量
+    {
+        // 创建操作数1
+        Operand op1;
+        if (idx == -1) // 如果操作数1就是变量
+        {
+            op1.name = addExp1->v;
+            op1.type = addExp1->t;
+            idx = 2;
+        }
+        else // 操作数1是常量或字面量，需要先转换为变量
+        {
+            if (addExp1->t == Type::IntLiteral)
+            {
+                op1 = IntLiteral2Int(addExp1->v, buffer);
+            }
+            else
+            {
+                op1 = FloatLiteral2Float(addExp1->v, buffer);
+            }
+        }
+
+        if (root->children.size() > 1) // 如果包含{ ( '<' | '>' | '<=' | '>=' ) AddExp }
+        {
+            if ((op1.type == Type::Int || op1.type == Type::Float))
+            {
+                auto tmpVar = Operand(getTmp(), op1.type == Type::Int ? Type::Int : Type::Float);
+                Operator instType = (op1.type == Type::Int) ? Operator::mov : Operator::fmov;
+                buffer.push_back(new Instruction(op1, {}, tmpVar, instType));
+                std::swap(op1, tmpVar);
+            }
+
+            for (int i = idx; i < root->children.size(); i += 2)
+            {
+                GET_NODE_PTR(Term, term, i - 1)
+                GET_NODE_PTR(AddExp, addExp2, i)
+                analyzeAddExp(addExp2, buffer);
+
+                // 创建操作数2
+                Operand op2;
+                if (addExp2->t == Type::IntLiteral)
+                {
+                    op2 = IntLiteral2Int(addExp2->v, buffer);
+                }
+                else if (addExp2->t == Type::FloatLiteral)
+                {
+                    op2 = FloatLiteral2Float(addExp2->v, buffer);
+                }
+                else
+                {
+                    op2 = Operand(addExp2->v, addExp2->t);
+                }
+
+                if (term->token.type == TokenType::LSS)
+                {
+                    if (op1.type == Type::Int && op2.type == Type::Int)
+                    {
+                        buffer.push_back(new Instruction(op1, op2, op1, Operator::lss));
+                    }
+                    else
+                    {
+                        assert(0 && "to be continue");
+                    }
+                }
+                else if (term->token.type == TokenType::GTR)
+                {
+                    if (op1.type == Type::Int && op2.type == Type::Int)
+                    {
+                        buffer.push_back(new Instruction(op1, op2, op1, Operator::gtr));
+                    }
+                    else
+                    {
+                        assert(0 && "to be continue");
+                    }
+                }
+                else if (term->token.type == TokenType::LEQ)
+                {
+                    if (op1.type == Type::Int && op2.type == Type::Int)
+                    {
+                        buffer.push_back(new Instruction(op1, op2, op1, Operator::leq));
+                    }
+                    else
+                    {
+                        assert(0 && "to be continue");
+                    }
+                }
+                else if (term->token.type == TokenType::GEQ)
+                {
+                    if (op1.type == Type::Int && op2.type == Type::Int)
+                    {
+                        buffer.push_back(new Instruction(op1, op2, op1, Operator::geq));
+                    }
+                    else
+                    {
+                        assert(0 && "to be continue");
+                    }
+                }
+                else
+                    assert(0 && "RelExp op error");
+            }
+        }
+
+        root->t = op1.type;
+        root->v = op1.name;
+    }
+}
+
+/**
+ * @brief 23单目运算符 UnaryOp -> '+' | '-' | '!'
+ * @param root
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-04
+ */
+void frontend::Analyzer::analyzeUnaryOp(UnaryOp *root)
+{
+    // TODO; lab2todo44 analyzeUnaryOp
+    GET_NODE_PTR(Term, term, 0) // 符号类型存放在term->token.type
+    root->op = term->token.type;
+}
+
+/**
+ * @brief 整型字面量转换为整型变量
  * @param val
  * @param buffer
  * @return ir::Operand
@@ -1523,7 +2255,7 @@ ir::Operand frontend::Analyzer::IntLiteral2Int(string val, vector<ir::Instructio
 }
 
 /**
- * @brief 浮点型常量转换为浮点型变量
+ * @brief 浮点型字面量转换为浮点型变量
  * @param val
  * @param buffer
  * @return ir::Operand
