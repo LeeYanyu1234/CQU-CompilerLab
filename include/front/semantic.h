@@ -108,8 +108,6 @@ namespace frontend
          */
         string get_scoped_name(string id) const;
 
-        ir::Operand get_operand(string id) const;
-
         STE get_ste(string id) const;
     };
 

@@ -59,9 +59,9 @@
                 // "./test/testcase/function/78_side_effect.sy",
                 // "./test/testcase/function/79_var_name.sy",
                 // "./test/testcase/function/89_many_globals.sy",
-                // "./test/testcase/function/95_float.sy",
-                "-s2",
-                // "-e",
+                "./test/testcase/function/95_float.sy",
+                // "-s2",
+                "-e",
                 "-o",
                 "./myTest/test.ir"
             ],
