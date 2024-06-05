@@ -129,18 +129,6 @@ string frontend::SymbolTable::get_scoped_name(string id) const
 }
 
 /**
- * @brief 寻找符号表中最近的同名变量，返回对应Operand
- * @param id 变量名
- * @return Operand 对应操作数
- * @author LeeYanyu1234 (343820386@qq.com)
- * @date 2024-05-31
- */
-Operand frontend::SymbolTable::get_operand(string id) const
-{
-    TODO;
-}
-
-/**
  * @brief 寻找符号表中最近的同名变量，返回对应STE
  * @param id 变量名
  * @return frontend::STE 返回对应STE
@@ -329,6 +317,7 @@ void frontend::Analyzer::analyzeFuncType(FuncType *root)
 /**
  * @brief 传递标识符名称
  * @param root
+ * @note 标识符名称通过term->v传递
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-05-31
  */
@@ -542,7 +531,10 @@ void frontend::Analyzer::analyzeStmt(Stmt *root, vector<ir::Instruction *> &buff
                 //* 计算出if的条件判断后，添加一条goto语句
                 if (cond->t == Type::Float)
                 {
-                    assert(0 && "to be continue");
+                    //? 95号测试点 if (x < 0)
+                    Operand tmpVar = Operand(getTmp(), Type::Float);
+                    buffer.push_back(new Instruction({cond->v, cond->t}, {"0,0", Type::FloatLiteral}, {tmpVar}, {Operator::fneq}));
+                    buffer.push_back(new Instruction({tmpVar}, {}, {"2", Type::IntLiteral}, {Operator::_goto}));
                 }
                 else
                 {
@@ -644,7 +636,35 @@ void frontend::Analyzer::analyzeStmt(Stmt *root, vector<ir::Instruction *> &buff
                 //* 由于返回值的类型可能不匹配，所以还需要增加一个指向当前函数的全局指针来读取当前的返回值类型
                 if (curFuncPtr->returnType == Type::Int)
                 {
-                    buffer.push_back(new Instruction({exp->v, exp->t}, {}, {}, {Operator::_return}));
+                    if (exp->t == Type::Int || exp->t == Type::IntLiteral)
+                    {
+                        buffer.push_back(new Instruction({exp->v, exp->t}, {}, {}, {Operator::_return}));
+                    }
+                    else if (exp->t == Type::FloatLiteral)
+                    {
+                        exp->v = TOS(int(std::stof(exp->v)));
+                        exp->t = Type::IntLiteral;
+                        buffer.push_back(new Instruction({exp->v, exp->t}, {}, {}, {Operator::_return}));
+                    }
+                    else
+                    {
+                        assert(0 && "to be continue");
+                    }
+                }
+                else if (curFuncPtr->returnType == Type::Float)
+                {
+                    if (exp->t == Type::Float || exp->t == Type::FloatLiteral)
+                    {
+                        buffer.push_back(new Instruction({exp->v, exp->t}, {}, {}, {Operator::_return}));
+                    }
+                    else
+                    {
+                        assert(0 && "to be continue");
+                    }
+                }
+                else
+                {
+                    assert(0 && "to be continue");
                 }
             }
             else
@@ -822,6 +842,11 @@ void frontend::Analyzer::analyzeAddExp(AddExp *root, vector<ir::Instruction *> &
                     {
                         buffer.push_back(new Instruction(op1, op2, op1, Operator::add));
                     }
+                    else if (op1.type == Type::Float && op2.type == Type::Float)
+                    {
+                        //? 95号测试点 return (PI * radius * radius + (radius * radius) * PI) / 2; 其中PI * radius * radius为浮点型，(radius * radius) * PI为浮点型
+                        buffer.push_back(new Instruction(op1, op2, op1, Operator::fadd));
+                    }
                     else
                     {
                         assert(0 && "to be continue");
@@ -832,6 +857,11 @@ void frontend::Analyzer::analyzeAddExp(AddExp *root, vector<ir::Instruction *> &
                     if (op1.type == Type::Int && op2.type == Type::Int)
                     {
                         buffer.push_back(new Instruction(op1, op2, op1, Operator::sub));
+                    }
+                    else if (op1.type == Type::Float && op2.type == Type::Float)
+                    {
+                        //? 95号测试点 if (float_abs(a - b) < EPS) 其中a为浮点型，b为浮点型
+                        buffer.push_back(new Instruction(op1, op2, op1, Operator::fsub));
                     }
                     else
                     {
@@ -1003,6 +1033,28 @@ void frontend::Analyzer::analyzeMulExp(MulExp *root, vector<ir::Instruction *> &
                     {
                         buffer.push_back(new Instruction(op1, op2, op1, Operator::mul));
                     }
+                    else if (op1.type == Type::Float && op2.type == Type::Float)
+                    {
+                        //? 95号测试点 float area = PI * input * input 其中PI为浮点型变量，input为浮点型变量
+                        buffer.push_back(new Instruction(op1, op2, op1, Operator::fmul));
+                    }
+                    else if (op1.type == Type::Float && op2.type == Type::Int)
+                    {
+                        //? 95号测试点 return (PI * radius * radius + (radius * radius) * PI) / 2; 其中PI为浮点型，radius为整型
+                        //* 需要在程序运行时完成类型转换，通过cvt_i2f指令
+                        Operand tmpVar = Operand(getTmp(), Type::Float);
+                        buffer.push_back(new Instruction({op2}, {}, {tmpVar}, {Operator::cvt_i2f}));
+                        buffer.push_back(new Instruction({op1}, {tmpVar}, {op1}, {Operator::fmul}));
+                    }
+                    else if (op1.type == Type::Int && op2.type == Type::Float)
+                    {
+                        //? 95号测试点 return (PI * radius * radius + (radius * radius) * PI) / 2; 其中radius * radius为整型，PI为浮点型
+                        //* 需要在程序运行时完成类型转换，通过cvt_i2f指令
+                        Operand tmpVar = Operand(getTmp(), Type::Float);
+                        buffer.push_back(new Instruction({op1}, {}, {tmpVar}, {Operator::cvt_i2f}));
+                        buffer.push_back(new Instruction({op2}, {tmpVar}, {op2}, {Operator::fmul}));
+                        std::swap(op1, op2);
+                    }
                     else
                     {
                         assert(0 && "to be continue");
@@ -1013,6 +1065,13 @@ void frontend::Analyzer::analyzeMulExp(MulExp *root, vector<ir::Instruction *> &
                     if (op1.type == Type::Int && op2.type == Type::Int)
                     {
                         buffer.push_back(new Instruction(op1, op2, op1, Operator::div));
+                    }
+                    else if (op1.type == Type::Float && op2.type == Type::Int)
+                    {
+                        //? 95号测试点 return (PI * radius * radius + (radius * radius) * PI) / 2; 其中(PI * radius * radius + (radius * radius) * PI)为浮点型，2为整型
+                        Operand tmpVar = Operand(getTmp(), Type::Float);
+                        buffer.push_back(new Instruction({op2}, {}, {tmpVar}, {Operator::cvt_i2f}));
+                        buffer.push_back(new Instruction({op1}, {tmpVar}, {op1}, {Operator::fdiv}));
                     }
                     else
                     {
@@ -1113,7 +1172,10 @@ void frontend::Analyzer::analyzeUnaryExp(UnaryExp *root, vector<ir::Instruction 
                 }
                 else // Float
                 {
-                    assert(0 && "to be continue");
+                    Operand des = Operand(getTmp(), Type::Float);
+                    buffer.push_back(new Instruction({"0.0", Type::FloatLiteral}, {tmpVar}, {des}, {Operator::fsub}));
+                    root->v = des.name;
+                    root->t = des.type;
                 }
             }
         }
@@ -1188,8 +1250,16 @@ void frontend::Analyzer::analyzePrimaryExp(PrimaryExp *root, vector<ir::Instruct
                     root->v = tmpVar.name;
                     root->t = tmpVar.type;
                 }
+                else if (lVal->t == Type::FloatPtr)
+                {
+                    //? 95号测试点 arr[p] = arr[p] + input; 其中arr为浮点型指针
+                    auto tmpVar = Operand(getTmp(), Type::Float);
+                    buffer.push_back(new Instruction({lValVar}, {offsetVar}, {tmpVar}, {Operator::load}));
+                    root->v = tmpVar.name;
+                    root->t = tmpVar.type;
+                }
                 else
-                    assert(0 && "to be continue");
+                    assert(0 && "lVal type error");
             }
         }
         else // 如果左值是变量，返回的是变量名
@@ -1440,17 +1510,37 @@ void frontend::Analyzer::analyzeInitVal(InitVal *root, vector<ir::Instruction *>
         if (root->t == Type::Int && exp->t == Type::IntLiteral) // 如果是通过字面量初始化
         {
             if (symbol_table.scope_stack.size() > 1) // 不是全局变量，直接def即可
+            {
                 buffer.push_back(new Instruction({exp->v, exp->t}, {}, {root->v, Type::Int}, {Operator::def}));
+            }
             else // 是全局变量，由于已经在静态区域申请了空间，所以需要通过mov指令初始化
             {
                 auto tmpVar = IntLiteral2Int(exp->v, buffer);
                 buffer.push_back(new Instruction(tmpVar, {}, Operand(root->v, Type::Int), Operator::mov));
             }
         }
+        else if (root->t == Type::Float && exp->t == Type::FloatLiteral)
+        {
+            //? 95号测试点 float f = 2*16 + 32 - 0x40 - 0.1; 其中f为浮点型变量，2*16 + 32 - 0x40 - 0.1为浮点型字面量、
+            if (symbol_table.scope_stack.size() > 1) // 不是全局变量，直接fdef即可
+            {
+                buffer.push_back(new Instruction({exp->v, exp->t}, {}, {root->v, Type::Float}, {Operator::fdef}));
+            }
+            else
+            {
+                assert(0 && "to be continue");
+            }
+        }
         else if (root->t == Type::Int && exp->t == Type::Int) // 通过变量初始化
         {
             Operand tmpVar = Operand(exp->v, exp->t);
             buffer.push_back(new Instruction({tmpVar}, {}, {root->v, Type::Int}, {Operator::mov}));
+        }
+        else if (root->t == Type::Float && exp->t == Type::Float)
+        {
+            //? 95号测试点 float input = getfloat(); 其中getfloat()为浮点型变量
+            Operand tmpVar = Operand(exp->v, exp->t);
+            buffer.push_back(new Instruction({tmpVar}, {}, {root->v, Type::Float}, {Operator::fmov}));
         }
         else
         {
@@ -1481,17 +1571,34 @@ void frontend::Analyzer::analyzeInitVal(InitVal *root, vector<ir::Instruction *>
         {
             Type type = (root->t == Type::Int) ? Type::IntLiteral : Type::FloatLiteral;
             Operand tmpVar = (type == Type::IntLiteral) ? IntLiteral2Int("0", buffer) : FloatLiteral2Float("0.0", buffer);
-            buffer.push_back(new Instruction({root->v, (root->t == Type::Int ? Type::IntPtr : Type::FloatLiteral)}, {TOS(i), Type::IntLiteral}, {tmpVar}, {Operator::store}));
+            buffer.push_back(new Instruction({root->v, (root->t == Type::Int ? Type::IntPtr : Type::FloatPtr)}, {TOS(i), Type::IntLiteral}, {tmpVar}, {Operator::store}));
         }
     }
     else if (dynamic_cast<InitVal *>(root->parent))
     {
         GET_NODE_PTR(Exp, exp, 0);
         analyzeExp(exp, buffer);
-        Operand expVar = exp->t == Type::IntLiteral ? IntLiteral2Int(exp->v, buffer) : FloatLiteral2Float(exp->v, buffer);
+        // Operand expVar = exp->t == Type::IntLiteral ? IntLiteral2Int(exp->v, buffer) : FloatLiteral2Float(exp->v, buffer);
         if (root->t == Type::Int && exp->t == Type::IntLiteral)
         {
+            Operand expVar = IntLiteral2Int(exp->v, buffer);
             buffer.push_back(new Instruction({root->v, Type::IntPtr}, {TOS(offset), Type::IntLiteral}, {expVar}, {Operator::store}));
+        }
+        else if (root->t == Type::Float && exp->t == Type::FloatLiteral)
+        {
+            Operand expVar = FloatLiteral2Float(exp->v, buffer);
+            buffer.push_back(new Instruction({root->v, Type::FloatPtr}, {TOS(offset), Type::IntLiteral}, {expVar}, {Operator::store}));
+        }
+        else if (root->t == Type::Float && exp->t == Type::IntLiteral)
+        {
+            exp->v = TOS(float(std::stoi(exp->v)));
+            exp->t = Type ::FloatLiteral;
+            Operand expVar = FloatLiteral2Float(exp->v, buffer);
+            buffer.push_back(new Instruction({root->v, Type::FloatPtr}, {TOS(offset), Type::IntLiteral}, {expVar}, {Operator::store}));
+        }
+        else
+        {
+            assert(0 && "to be continue");
         }
     }
     else
@@ -1612,21 +1719,35 @@ void frontend::Analyzer::analyzeConstDef(ConstDef *root, vector<ir::Instruction 
     constInitVal->v = term->token.value; // 放入变量原名
     if (type == Type::Int)               // 常量类型为整型
     {
-        if (size == 0) // 如果是普通变量
+        if (size == 0) // 如果是整型普通变量
         {
-            symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::Int), dimension, size, true); // 插入符号表
-            constInitVal->t = Type::Int;
+            symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::Int), dimension, size, true);
+            constInitVal->t = Type::Int; //? 此时的Int指代变量本身的类型
         }
-        else // 如果是数组
+        else // 如果是整型数组
         {
-            symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::IntPtr), dimension, size, true); // 插入符号表
-            constInitVal->t = Type::IntLiteral;
+            symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::IntPtr), dimension, size, true);
+            constInitVal->t = Type::IntLiteral;      //? 数组需要添加定义指令，此时指代初始值的期望类型
             if (symbol_table.scope_stack.size() > 1) // 如果不是一个全局变量，需要通过alloc分配空间
             {
                 buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::IntPtr}, {Operator::alloc}));
             }
         }
     }
+    else if (type == Type::Float) // 常量类型为浮点型
+    {
+        if (size == 0) // 如果是浮点型普通变量
+        {
+            symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::Float), dimension, size, true);
+            constInitVal->t = Type::Float; //? 此时的Int指代变量本身的类型
+        }
+        else // 如果是浮点型数组
+        {
+            assert(0 && "to be continue");
+        }
+    }
+    else
+        assert(0 && "analyzeConstDef error");
     analyzeConstInitVal(constInitVal, buffer, size, 0, 0, dimension);
 }
 
@@ -1649,7 +1770,40 @@ void frontend::Analyzer::analyzeConstInitVal(ConstInitVal *root, vector<ir::Inst
     {
         GET_NODE_PTR(ConstExp, constExp, 0) // 常量变量的初始化一定是通过ConstExp
         analyzeConstExp(constExp);
-        symbol_table.scope_stack.back().table[root->v].val = constExp->v; // 将常量的字面量记录到符号表
+
+        //? 95号测试点中出现了常量初值与常量类型不匹配的情况
+        if (root->t == Type::Int)
+        {
+            if (constExp->t == Type::IntLiteral) // 类型一致
+            {
+                symbol_table.scope_stack.back().table[root->v].val = constExp->v; // 将常量的字面量记录到符号表
+            }
+            else if (constExp->t == Type::FloatLiteral) // 类型不一致
+            {
+                //? 95号测试点 const int MAX = 1000000000, TWO = 2.9
+                constExp->v = TOS(int(stof(constExp->v)));
+                constExp->t = Type::IntLiteral;
+                symbol_table.scope_stack.back().table[root->v].val = constExp->v; // 将常量的字面量记录到符号表
+            }
+            else
+                assert(0 && "ConstInitVal type error");
+        }
+        else if (root->t == Type::Float)
+        {
+            if (constExp->t == Type::FloatLiteral) // 类型一致
+            {
+                symbol_table.scope_stack.back().table[root->v].val = constExp->v; // 将常量的字面量记录到符号表
+            }
+            else if (constExp->t == Type::IntLiteral) // 类型不一致
+            {
+                //? 95号测试点 const float CONV1 = 233
+                constExp->v = TOS(float(stoi(constExp->v)));
+                constExp->t = Type::FloatLiteral;
+                symbol_table.scope_stack.back().table[root->v].val = constExp->v; // 将常量的字面量记录到符号表
+            }
+            else
+                assert(0 && "ConstInitVal type error");
+        }
     }
     else // 如果是数组
     {
@@ -1724,13 +1878,41 @@ void frontend::Analyzer::analyzeFuncRParams(FuncRParams *root, vector<ir::Instru
             {
                 args.push_back(arg);
             }
+            else if (arg.type == Type::FloatLiteral)
+            {
+                //? 95号测试点 circle_area(RADIUS) 其中RADIUS为浮点型字面量
+                arg.name = TOS(int(std::stof(arg.name)));
+                arg.type = Type::IntLiteral;
+                args.push_back(arg);
+            }
+            else if (arg.type == Type::Float)
+            {
+                //? 95号测试点 area_trunc = circle_area(input); 其中input为浮点型变量
+                Operand tmpVar = Operand(getTmp(), Type::Int);
+                buffer.push_back(new Instruction({arg}, {}, {tmpVar}, {Operator::cvt_f2i}));
+                std::swap(arg, tmpVar);
+                args.push_back(arg);
+            }
             else
             {
                 assert(0 && "to be continue");
             }
         }
-        else if (fParam.type == Type::IntPtr)
+        else if (fParam.type == Type::Float)
         {
+            //? 95号测试点 if (float_abs(a - b) < EPS) 其中a-b为浮点型变量
+            if (arg.type == Type::Float || arg.type == Type::FloatLiteral)
+            {
+                args.push_back(arg);
+            }
+            else
+            {
+                assert(0 && "to be continue");
+            }
+        }
+        else if (fParam.type == Type::IntPtr || fParam.type == Type::FloatPtr)
+        {
+            //? 95号测试点 int len = getfarray(arr); 其中arr为浮点型指针
             args.push_back(arg);
         }
         else
@@ -1786,6 +1968,11 @@ void frontend::Analyzer::analyzeLOrExp(LOrExp *root, vector<ir::Instruction *> &
             if (lAndExp->t == Type::IntLiteral && lOrExp->t == Type::IntLiteral)
             {
                 root->v = TOS(std::stoi(lAndExp->v) || std::stoi(lOrExp->v));
+            }
+            else if (lAndExp->t == Type::IntLiteral && lOrExp->t == Type::FloatLiteral)
+            {
+                //? 95号测试点 if (0 || 0.3) 其中0为整型字面量，0.3为浮点型字面量
+                root->v = TOS(std::stoi(lAndExp->v) || std::stof(lOrExp->v));
             }
             else
             {
@@ -1869,7 +2056,13 @@ void frontend::Analyzer::analyzeLAndExp(LAndExp *root, vector<ir::Instruction *>
             root->t = Type::IntLiteral;
             if (eqExp->t == Type::IntLiteral && lAndExp->t == Type::IntLiteral)
             {
-                root->v = TOS(std::stoi(eqExp->v) || std::stoi(lAndExp->v));
+                assert(0 && "to be continue");
+                // root->v = TOS(std::stoi(eqExp->v) && std::stoi(lAndExp->v));
+            }
+            else if (eqExp->t == Type::FloatLiteral && lAndExp->t == Type::FloatLiteral)
+            {
+                //? 95号测试点 if (.0 && 3 == 0.4) 其中.0为浮点型字面量
+                root->v = TOS(std::stof(eqExp->v) && std::stof(lAndExp->v));
             }
             else
             {
@@ -2254,6 +2447,8 @@ void frontend::Analyzer::analyzeRelExp(RelExp *root, vector<ir::Instruction *> &
                 buffer.push_back(new Instruction(op1, {}, tmpVar, instType));
                 std::swap(op1, tmpVar);
             }
+            else
+                assert(0 && "op1 type error");
 
             for (int i = idx; i < root->children.size(); i += 2)
             {
@@ -2281,6 +2476,19 @@ void frontend::Analyzer::analyzeRelExp(RelExp *root, vector<ir::Instruction *> &
                     if (op1.type == Type::Int && op2.type == Type::Int)
                     {
                         buffer.push_back(new Instruction(op1, op2, op1, Operator::lss));
+                    }
+                    else if (op1.type == Type::Float && op2.type == Type::Int)
+                    {
+                        //? 95号测试点 if (x < 0) 其中x为浮点型变量
+                        //* 需要在程序运行时完成类型转换，通过cvt_i2f指令
+                        Operand tmpVar = Operand(getTmp(), Type::Float);
+                        buffer.push_back(new Instruction({op2}, {}, {tmpVar}, {Operator::cvt_i2f}));
+                        buffer.push_back(new Instruction({op1}, {tmpVar}, {op1}, {Operator::flss}));
+                    }
+                    else if (op1.type == Type::Float && op2.type == Type::Float)
+                    {
+                        //? 95号测试点 if (float_abs(a - b) < EPS) 其中float_abs(a - b)为浮点型变量，EPS为浮点型变量
+                        buffer.push_back(new Instruction(op1, op2, op1, Operator::flss));
                     }
                     else
                     {

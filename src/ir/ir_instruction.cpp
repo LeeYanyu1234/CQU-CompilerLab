@@ -4,6 +4,15 @@
 
 ir::Instruction::Instruction() {}
 
+/**
+ * @brief Construct a new ir::Instruction::Instruction object
+ * @param op1
+ * @param op2
+ * @param des
+ * @param op
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-05
+ */
 ir::Instruction::Instruction(const Operand &op1, const Operand &op2, const Operand &des, const Operator &op)
     : op1(op1), op2(op2), des(des), op(op) {}
 
