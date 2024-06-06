@@ -69,7 +69,8 @@
                 // "-e",
                 "-S",
                 "-o",
-                "./myTest/test.ir"
+                // "./myTest/test.ir",
+                "./myTest/test.s"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

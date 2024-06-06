@@ -161,8 +161,8 @@ ir::Program frontend::Analyzer::get_ir_program(CompUnit *root)
     ir::Program program; // 存放ir程序
 
     // 添加运行时库到符号表中
-    map<std::string, ir::Function *> *libFuncs = get_lib_funcs();
-    for (auto libFunc = libFuncs->begin(); libFunc != libFuncs->end(); libFunc++)
+    map<std::string, ir::Function *> libFuncs = *get_lib_funcs();
+    for (auto libFunc = libFuncs.begin(); libFunc != libFuncs.end(); libFunc++)
     {
         symbol_table.functions[libFunc->first] = libFunc->second;
     }
@@ -189,6 +189,11 @@ ir::Program frontend::Analyzer::get_ir_program(CompUnit *root)
 
     program.functions.push_back(globalFunc);
 
+    // 删除符号表中的运行时库
+    for (auto libFunc = libFuncs.begin(); libFunc != libFuncs.end(); libFunc++)
+    {
+        symbol_table.functions.erase(libFunc->first);
+    }
     for (auto func = symbol_table.functions.begin(); func != symbol_table.functions.end(); func++)
     {
         if (func->first == "main") // 在main函数的最前面生成对global函数的调用
