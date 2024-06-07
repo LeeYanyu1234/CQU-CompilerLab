@@ -135,6 +135,10 @@ void backend::Generator::initGlobaVar(const ir::Function &func)
             {
                 fout << "\t.comm\t" << globalVar.val.name << ", " << globalVar.maxlen * 4 << ", 4\n";
             }
+            else if (globalVar.val.type == ir::Type::Int)
+            {
+                fout << "\t.comm\t" << globalVar.val.name << ", 4, 4\n";
+            }
             else
             {
                 assert(0 && "to be continue");
