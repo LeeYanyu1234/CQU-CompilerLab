@@ -7,8 +7,8 @@
             "request": "launch",
             "program": "${workspaceFolder}/bin/compiler",
             "args": [
-                "./test/testcase/basic/00_main.sy",
-                // "./test/testcase/basic/01_var_defn2.sy",
+                // "./test/testcase/basic/00_main.sy",
+                "./test/testcase/basic/01_var_defn2.sy",
                 // "./test/testcase/basic/02_var_defn3.sy",
                 // "./test/testcase/basic/03_arr_defn2.sy",
                 // "./test/testcase/basic/04_arr_defn3.sy",

@@ -39,9 +39,9 @@ namespace rv
         X26, // s10        saved register 10                    Callee
         X27, // s11        saved register 11                    Callee
         X28, // t3         temporary register 3                 Caller
-        X29, // t4         temporary register 4                 Caller
-        X30, // t5         temporary register 5                 Caller
-        X31, // t6         temporary register 6                 Caller
+        X29, // t4         temporary register 4                 Caller op2
+        X30, // t5         temporary register 5                 Caller op1/des
+        X31, // t6         temporary register 6                 Caller 用于加载立即数
     };
 
     std::string toString(rvREG r); // implement this in ur own way

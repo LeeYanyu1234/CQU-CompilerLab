@@ -59,11 +59,10 @@ rv::rvFREG backend::Generator::fgetRs2(ir::Operand)
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-06-06
  */
-int backend::stackVarMap::find_operand(ir::Operand op)
-{
-    TODO;
-    return 0;
-}
+// int backend::stackVarMap::find_operand(ir::Operand op)
+// {
+//     return 0;
+// }
 
 /**
  * @brief 向映射表中添加变量与偏移量的映射
@@ -73,23 +72,58 @@ int backend::stackVarMap::find_operand(ir::Operand op)
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-06-06
  */
-int backend::stackVarMap::add_operand(ir::Operand op, uint32_t size)
-{
-    TODO;
-    return 0;
-}
+// int backend::stackVarMap::add_operand(ir::Operand op, uint32_t size)
+// {
+//     return 0;
+// }
 
 void backend::Generator::gen()
 {
     // TODO; lab3todo1 gen
     setOption();
-    setText();
+    initGlobaVar(program.functions.front());
 
+    setText();
     //* 跳过global函数，因为global已经单独处理
     for (int i = 1; i < program.functions.size(); i++)
     {
         gen_func(program.functions[i]);
     }
+}
+
+/**
+ * @brief 初始化全局变量
+ * @param func 全局函数
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-06
+ */
+void backend::Generator::initGlobaVar(const ir::Function &func)
+{
+    // TODO; lab3todo14 initGlobaVar
+    setData();
+
+    for (int i = 0; i < func.InstVec.size(); i += 2)
+    {
+        if (func.InstVec[i]->op == ir::Operator::def)
+        {
+            ir::Instruction *defInst = func.InstVec[i];
+            ir::Instruction *movInst = func.InstVec[i + 1];
+            setGlobal(movInst->des.name);
+            setTypeObj(movInst->des.name);
+            fout << "\t.size\t" << movInst->des.name << ", 4\n";
+            setLabel(movInst->des.name);
+            setIntInitVar(defInst->op1.name);
+        }
+        else if (func.InstVec[i]->op == ir::Operator::_return)
+        {
+            break;
+        }
+        else
+        {
+            assert(0 && "to be continue");
+        }
+    }
+    fout.flush();
 }
 
 /**
@@ -115,7 +149,7 @@ void backend::Generator::gen_func(const ir::Function &func)
     recoverReg(func);
 
     fout << "\tjr	ra\n";
-    this->fout << "\t.size\t" << func.name << ", .-" << func.name << "\n";
+    fout << "\t.size\t" << func.name << ", .-" << func.name << "\n";
 }
 
 /**
@@ -132,7 +166,14 @@ void backend::Generator::gen_instr(const ir::Instruction &inst)
         genInstReturn(inst);
     else if (op == ir::Operator::call)
         genInstCall(inst);
+    else if (op == ir::Operator::def)
+        genInstDef(inst);
+    else if (op == ir::Operator::mov)
+        genInstMov(inst);
+    else if (op == ir::Operator::add)
+        genInstAdd(inst);
     else
+
         assert(0 && "to be continue");
 }
 
@@ -145,8 +186,29 @@ void backend::Generator::gen_instr(const ir::Instruction &inst)
 void backend::Generator::saveReg(const ir::Function &func)
 {
     // TODO; lab3todo9 saveReg
-    fout << "\taddi\tsp,sp,-" << "16" << "\n";
-    fout << "\tsw	s0,12(sp)\n";
+    stackVarMap.clear();
+    stackSize = 0;
+
+    for (auto inst : func.InstVec)
+    {
+        if (inst->des.type == ir::Type::Int)
+        {
+            if (!isGlobal(inst->des.name))
+                addOperand(inst->des);
+        }
+        if (inst->op1.type == ir::Type::Int)
+        {
+            if (!isGlobal(inst->op1.name))
+                addOperand(inst->op1);
+        }
+        if (inst->op2.type == ir::Type::Int)
+        {
+            if (!isGlobal(inst->op2.name))
+                addOperand(inst->op2);
+        }
+    }
+    fout << "\taddi\tsp,sp,-" << stackSize << "\n";
+    // fout << "\tsw	s0,12(sp)\n";
 }
 
 /**
@@ -158,8 +220,8 @@ void backend::Generator::saveReg(const ir::Function &func)
 void backend::Generator::recoverReg(const ir::Function &func)
 {
     // TODO; lab3todo10 recoverReg
-    fout << "\tlw	s0,12(sp)\n";
-    fout << "\taddi\tsp,sp," << "16" << "\n";
+    // fout << "\tlw	s0,12(sp)\n";
+    fout << "\taddi\tsp,sp," << stackSize << "\n";
 }
 
 /**
@@ -173,7 +235,12 @@ void backend::Generator::genInstReturn(const ir::Instruction &inst)
     // TODO; lab3todo12 genInstReturn
     if (inst.op1.type == ir::Type::IntLiteral) // 返回值类型为立即数
     {
-        fout << "\tli\ta0," << std::stoi(inst.op1.name) << "\n";
+        fout << "\tli\ta0, " << std::stoi(inst.op1.name) << "\n";
+        fout << "\tjr\tra\n";
+    }
+    else if (inst.op1.type == ir::Type::Int)
+    {
+        fout << "\tlw\ta0, " << findOperand(inst.op1.name) << "(sp)\n";
         fout << "\tjr\tra\n";
     }
     else
@@ -190,6 +257,7 @@ void backend::Generator::genInstReturn(const ir::Instruction &inst)
  */
 void backend::Generator::genInstCall(const ir::Instruction &inst)
 {
+    // TODO; lab3todo13 genInstCall
     if (inst.op1.name == "global") // 不调用global函数
     {
         return;
@@ -200,6 +268,107 @@ void backend::Generator::genInstCall(const ir::Instruction &inst)
     }
 }
 
+/**
+ * @brief 生成def语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-07
+ */
+void backend::Generator::genInstDef(const ir::Instruction &inst)
+{
+    // TODO; lab3todo20 genInstDef
+    if (inst.op1.type == ir::Type::IntLiteral)
+    {
+        fout << "\tli\tt6, " << inst.op1.name << "\n";
+        fout << "\tsw\tt6, " << findOperand(inst.op1.name) << "(sp)" << "\n";
+    }
+    else
+    {
+        assert(0 && "to be continue");
+    }
+}
+
+/**
+ * @brief 生成mov语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-07
+ */
+void backend::Generator::genInstMov(const ir::Instruction &inst)
+{
+    // TODO; lab3todo21 genInstMov
+    if (inst.op1.type == ir::Type::Int && inst.des.type == ir::Type::Int)
+    {
+        if (isGlobal(inst.op1.name))
+        {
+            assert(0 && "to be continue");
+        }
+        else
+        {
+            fout << "\tlw\tt6, " << findOperand(inst.op1) << "(sp)" << "\n";
+        }
+
+        if (isGlobal(inst.des.name))
+        {
+            assert(0 && "to be continue");
+        }
+        else
+        {
+            fout << "\tsw\tt6, " << findOperand(inst.des) << "(sp)" << "\n";
+        }
+    }
+    else
+    {
+        assert(0 && "to be continue");
+    }
+}
+
+/**
+ * @brief 生成mov语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-07
+ */
+void backend::Generator::genInstAdd(const ir::Instruction &inst)
+{
+    // TODO; lab3todo22 genInstAdd
+    loadVarOp1(inst.op1);
+    loadVarOp2(inst.op2);
+    fout << "\tadd\t t5, t5, t4\n";
+    storeVarDes(inst.des);
+    fout.flush();
+}
+
+void backend::Generator::loadVarOp1(const ir::Operand &op)
+{
+    // TODO; lab3todo23 loadVarOp1
+    if (op.type == ir::Type::Int)
+    {
+        fout << "\tlw\tt5 ," << findOperand(op) << "(sp)\n";
+    }
+    else
+        assert(0 && "to be continue");
+}
+void backend::Generator::loadVarOp2(const ir::Operand &op)
+{
+    // TODO; lab3todo24 loadVarOp2
+    if (op.type == ir::Type::Int)
+    {
+        fout << "\tlw\tt4 ," << findOperand(op) << "(sp)\n";
+    }
+    else
+        assert(0 && "to be continue");
+}
+void backend::Generator::storeVarDes(const ir::Operand &op)
+{
+    // TODO; lab3todo25 storeVarDes
+    if (op.type == ir::Type::Int)
+    {
+        fout << "\tsw\tt5 ," << findOperand(op) << "(sp)\n";
+    }
+    else
+        assert(0 && "to be continue");
+}
 /**
  * @brief 生成.option nopic
  * @note 指定生成的代码与位置无关，可以在内存任意位置运行
@@ -222,6 +391,19 @@ void backend::Generator::setText()
     // TODO; lab3todo3 setText
     fout << "\t.text\n";
     fout << "\t.align\t1\n";
+}
+
+/**
+ * @brief 生成.section .data
+ * @note 由于储存已经初始化的全局变量
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-07
+ */
+void backend::Generator::setData()
+{
+    // TODO; lab3todo15 initGlobaVar
+    fout << "\t.section\t.data\n";
+    fout << "\t.align\t2\n";
 }
 
 /**
@@ -270,4 +452,62 @@ void backend::Generator::setLabel(std::string name)
 {
     // TODO; lab3todo8 setLabel
     fout << name << ":\n";
+}
+
+/**
+ * @brief 设置整型全局变量的初值
+ * @param val
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-07
+ */
+void backend::Generator::setIntInitVar(std::string val)
+{
+    // TODO; lab3todo16 setIntInitVar
+    fout << "\t.word\t" << val << "\n";
+}
+
+/**
+ * @brief 判断变量是否为全局变量
+ * @param name 变量名
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-07
+ */
+bool backend::Generator::isGlobal(const std::string &name)
+{
+    // TODO; lab3todo17 isGlobal
+    for (auto var : program.globalVal)
+        if (var.val.name == name)
+            return true;
+    return false;
+}
+
+/**
+ * @brief 在映射表中查找局部变量
+ * @param opd
+ * @return int
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-07
+ */
+int backend::Generator::findOperand(ir::Operand opd)
+{
+    // TODO; lab3todo18 findOperand
+    return stackVarMap[opd.name];
+}
+
+/**
+ * @brief 向映射表中添加变量与偏移量的映射
+ * @param opd
+ * @param size
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-07
+ */
+void backend::Generator::addOperand(ir::Operand opd, uint32_t size)
+{
+    // TODO; lab3todo19 addOperand
+    if (stackVarMap.find(opd.name) == stackVarMap.end())
+    {
+        stackVarMap[opd.name] = stackSize;
+        stackSize += size;
+    }
 }
