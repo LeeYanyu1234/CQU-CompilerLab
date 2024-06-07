@@ -76,8 +76,7 @@ namespace backend
         void storeVarDes(const ir::Operand &);
 
         // 设置对应字段
-        void
-        setOption();
+        void setOption();
         void setText();
         void setData();
         void setGlobal(std::string);

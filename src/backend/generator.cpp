@@ -102,6 +102,8 @@ void backend::Generator::initGlobaVar(const ir::Function &func)
     // TODO; lab3todo14 initGlobaVar
     setData();
 
+    std::map<std::string, int> initVal;
+
     for (int i = 0; i < func.InstVec.size(); i += 2)
     {
         if (func.InstVec[i]->op == ir::Operator::def)
@@ -113,6 +115,7 @@ void backend::Generator::initGlobaVar(const ir::Function &func)
             fout << "\t.size\t" << movInst->des.name << ", 4\n";
             setLabel(movInst->des.name);
             setIntInitVar(defInst->op1.name);
+            initVal[movInst->des.name] = 1;
         }
         else if (func.InstVec[i]->op == ir::Operator::_return)
         {
@@ -123,7 +126,21 @@ void backend::Generator::initGlobaVar(const ir::Function &func)
             assert(0 && "to be continue");
         }
     }
-    fout.flush();
+
+    for (auto globalVar : program.globalVal)
+    {
+        if (initVal[globalVar.val.name] != 1)
+        {
+            if (globalVar.val.type == ir::Type::IntPtr)
+            {
+                fout << "\t.comm\t" << globalVar.val.name << ", " << globalVar.maxlen * 4 << ", 4\n";
+            }
+            else
+            {
+                assert(0 && "to be continue");
+            }
+        }
+    }
 }
 
 /**
