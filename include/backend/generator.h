@@ -70,6 +70,10 @@ namespace backend
         void genInstDef(const ir::Instruction &);
         void genInstMov(const ir::Instruction &);
         void genInstAdd(const ir::Instruction &);
+        void genInstAlloc(const ir::Instruction &);
+        void genInstStore(const ir::Instruction &);
+        void genInstMul(const ir::Instruction &);
+        void genInstLoad(const ir::Instruction &);
 
         void loadVarOp1(const ir::Operand &);
         void loadVarOp2(const ir::Operand &);

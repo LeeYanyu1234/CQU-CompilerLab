@@ -186,8 +186,15 @@ void backend::Generator::gen_instr(const ir::Instruction &inst)
         genInstMov(inst);
     else if (op == ir::Operator::add)
         genInstAdd(inst);
+    else if (op == ir::Operator::alloc)
+        genInstAlloc(inst);
+    else if (op == ir::Operator::store)
+        genInstStore(inst);
+    else if (op == ir::Operator::mul)
+        genInstMul(inst);
+    else if (op == ir::Operator::load)
+        genInstLoad(inst);
     else
-
         assert(0 && "to be continue");
 }
 
@@ -210,6 +217,11 @@ void backend::Generator::saveReg(const ir::Function &func)
             if (!isGlobal(inst->des.name))
                 addOperand(inst->des);
         }
+        else if (inst->des.type == ir::Type::IntPtr && inst->op == ir::Operator::alloc && inst->op1.type == ir::Type::IntLiteral)
+        {
+            addOperand(inst->des, stoi(inst->op1.name) * 4);
+        }
+
         if (inst->op1.type == ir::Type::Int)
         {
             if (!isGlobal(inst->op1.name))
@@ -352,6 +364,66 @@ void backend::Generator::genInstAdd(const ir::Instruction &inst)
     loadVarOp1(inst.op1);
     loadVarOp2(inst.op2);
     fout << "\tadd\t t5, t5, t4\n";
+    storeVarDes(inst.des);
+}
+
+/**
+ * @brief 生成alloc语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-07
+ */
+void backend::Generator::genInstAlloc(const ir::Instruction &inst)
+{
+    // TODO; lab3todo26 genInstAlloc
+    //* 已经计算栈大小时分配空间，所以这里什么都不做
+    return;
+}
+
+/**
+ * @brief 生成store语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-07
+ */
+void backend::Generator::genInstStore(const ir::Instruction &inst)
+{
+    // TODO; lab3todo27 genInstStore
+    if (inst.des.type == ir::Type::Int && inst.op2.type == ir::Type::IntLiteral)
+    {
+        loadVarOp1(inst.des);
+        fout << "\tsw\tt5, " << findOperand(inst.op1) + stoi(inst.op2.name) * 4 << "(sp)\n";
+    }
+}
+
+/**
+ * @brief 生成mul语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-07
+ */
+void backend::Generator::genInstMul(const ir::Instruction &inst)
+{
+    // TODO; lab3todo28 genInstMul
+    loadVarOp1(inst.op1);
+    loadVarOp2(inst.op2);
+    fout << "\tmul\t t5, t5, t4\n";
+    storeVarDes(inst.des);
+}
+
+/**
+ * @brief 生成load语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-07
+ */
+void backend::Generator::genInstLoad(const ir::Instruction &inst)
+{
+    // TODO; lab3todo29 genInstLoad
+    loadVarOp2(inst.op2);
+    fout << "\tslli\tt4, t4, 2\n";
+    fout << "\tadd\tt3, sp, t4\n";
+    fout << "\tlw\tt5, " << findOperand(inst.op1) << "(t3)\n";
     storeVarDes(inst.des);
     fout.flush();
 }

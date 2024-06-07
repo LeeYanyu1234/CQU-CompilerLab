@@ -4,8 +4,84 @@ end
 
 int main()
 	0: call null, global()
-	1: return 0
+	1: alloc a_Scp1, 8
+	2: def t0, 0
+	3: store t0, a_Scp1, 0
+	4: def t1, 0
+	5: store t1, a_Scp1, 1
+	6: def t2, 0
+	7: store t2, a_Scp1, 2
+	8: def t3, 0
+	9: store t3, a_Scp1, 3
+	10: def t4, 0
+	11: store t4, a_Scp1, 4
+	12: def t5, 0
+	13: store t5, a_Scp1, 5
+	14: def t6, 0
+	15: store t6, a_Scp1, 6
+	16: def t7, 0
+	17: store t7, a_Scp1, 7
+	18: alloc b_Scp1, 8
+	19: def t8, 1
+	20: store t8, b_Scp1, 0
+	21: def t9, 2
+	22: store t9, b_Scp1, 1
+	23: def t10, 3
+	24: store t10, b_Scp1, 2
+	25: def t11, 4
+	26: store t11, b_Scp1, 3
+	27: def t12, 5
+	28: store t12, b_Scp1, 4
+	29: def t13, 6
+	30: store t13, b_Scp1, 5
+	31: def t14, 7
+	32: store t14, b_Scp1, 6
+	33: def t15, 8
+	34: store t15, b_Scp1, 7
+	35: def t16, 0
+	36: def t17, 2
+	37: def t18, 3
+	38: mul t17, t17, t18
+	39: add t16, t16, t17
+	40: def t19, 1
+	41: def t20, 1
+	42: mul t19, t19, t20
+	43: add t16, t16, t19
+	44: load t21, b_Scp1, t16
+	45: def t22, 0
+	46: def t23, 2
+	47: def t24, 0
+	48: mul t23, t23, t24
+	49: add t22, t22, t23
+	50: def t25, 1
+	51: def t26, 0
+	52: mul t25, t25, t26
+	53: add t22, t22, t25
+	54: load t27, b_Scp1, t22
+	55: add t21, t21, t27
+	56: def t28, 0
+	57: def t29, 2
+	58: def t30, 0
+	59: mul t29, t29, t30
+	60: add t28, t28, t29
+	61: def t31, 1
+	62: def t32, 1
+	63: mul t31, t31, t32
+	64: add t28, t28, t31
+	65: load t33, b_Scp1, t28
+	66: add t21, t21, t33
+	67: def t34, 0
+	68: def t35, 2
+	69: def t36, 2
+	70: mul t35, t35, t36
+	71: add t34, t34, t35
+	72: def t37, 1
+	73: def t38, 0
+	74: mul t37, t37, t38
+	75: add t34, t34, t37
+	76: load t39, b_Scp1, t34
+	77: add t21, t21, t39
+	78: return t21
 end
 
 GVT:
-	a_Scp0 int* 100
