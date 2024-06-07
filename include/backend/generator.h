@@ -62,7 +62,7 @@ namespace backend
 
         // 辅助函数生成
         void saveReg(const ir::Function &);
-        void recoverReg(const ir::Function &);
+        void recoverReg();
 
         // 辅助代码生成
         void genInstReturn(const ir::Instruction &);

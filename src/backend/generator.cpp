@@ -146,9 +146,6 @@ void backend::Generator::gen_func(const ir::Function &func)
         gen_instr(*inst);
     }
 
-    recoverReg(func);
-
-    fout << "\tjr	ra\n";
     fout << "\t.size\t" << func.name << ", .-" << func.name << "\n";
 }
 
@@ -217,7 +214,7 @@ void backend::Generator::saveReg(const ir::Function &func)
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-06-06
  */
-void backend::Generator::recoverReg(const ir::Function &func)
+void backend::Generator::recoverReg()
 {
     // TODO; lab3todo10 recoverReg
     // fout << "\tlw	s0,12(sp)\n";
@@ -233,14 +230,17 @@ void backend::Generator::recoverReg(const ir::Function &func)
 void backend::Generator::genInstReturn(const ir::Instruction &inst)
 {
     // TODO; lab3todo12 genInstReturn
+
     if (inst.op1.type == ir::Type::IntLiteral) // 返回值类型为立即数
     {
         fout << "\tli\ta0, " << std::stoi(inst.op1.name) << "\n";
+        recoverReg();
         fout << "\tjr\tra\n";
     }
     else if (inst.op1.type == ir::Type::Int)
     {
         fout << "\tlw\ta0, " << findOperand(inst.op1.name) << "(sp)\n";
+        recoverReg();
         fout << "\tjr\tra\n";
     }
     else
@@ -277,10 +277,10 @@ void backend::Generator::genInstCall(const ir::Instruction &inst)
 void backend::Generator::genInstDef(const ir::Instruction &inst)
 {
     // TODO; lab3todo20 genInstDef
-    if (inst.op1.type == ir::Type::IntLiteral)
+    if (inst.op1.type == ir::Type::IntLiteral && inst.des.type == ir::Type::Int)
     {
         fout << "\tli\tt6, " << inst.op1.name << "\n";
-        fout << "\tsw\tt6, " << findOperand(inst.op1.name) << "(sp)" << "\n";
+        fout << "\tsw\tt6, " << findOperand(inst.des.name) << "(sp)" << "\n";
     }
     else
     {
