@@ -178,7 +178,10 @@ ir::Program frontend::Analyzer::get_ir_program(CompUnit *root)
         if (ste.dimension.size())
             program.globalVal.push_back({ste.operand, ste.size});
         else
-            program.globalVal.push_back({ste.operand, 0});
+        {
+            if (ste.isConst == false)
+                program.globalVal.push_back({ste.operand, 0});
+        }
     }
 
     //* 处理全局变量的初始化
