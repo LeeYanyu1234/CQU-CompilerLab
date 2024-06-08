@@ -227,6 +227,12 @@ void backend::Generator::gen_instr(const ir::Instruction &inst)
         genInstMul(inst);
     else if (op == ir::Operator::load)
         genInstLoad(inst);
+    else if (op == ir::Operator::sub)
+        genInstSub(inst);
+    else if (op == ir::Operator::div)
+        genInstDiv(inst);
+    else if (op == ir::Operator::mod)
+        genInstMod(inst);
     else
         assert(0 && "to be continue");
 }
@@ -241,7 +247,7 @@ void backend::Generator::saveReg(const ir::Function &func)
 {
     // TODO; lab3todo9 saveReg
     stackVarMap.clear();
-    stackSize = 0;
+    stackSize = 4;
 
     for (auto inst : func.InstVec)
     {
@@ -266,8 +272,8 @@ void backend::Generator::saveReg(const ir::Function &func)
                 addOperand(inst->op2);
         }
     }
-    fout << "\taddi\tsp,sp,-" << stackSize << "\n";
-    // fout << "\tsw	s0,12(sp)\n";
+    fout << "\taddi\tsp, sp, -" << stackSize << "\n";
+    fout << "\tsw\tra, 0(sp)\n";
 }
 
 /**
@@ -279,7 +285,7 @@ void backend::Generator::saveReg(const ir::Function &func)
 void backend::Generator::recoverReg()
 {
     // TODO; lab3todo10 recoverReg
-    // fout << "\tlw	s0,12(sp)\n";
+    fout << "\tlw\tra, 0(sp)\n";
     fout << "\taddi\tsp,sp," << stackSize << "\n";
 }
 
@@ -363,16 +369,20 @@ void backend::Generator::genInstMov(const ir::Instruction &inst)
     {
         if (isGlobal(inst.op1.name))
         {
-            assert(0 && "to be continue");
+            fout << "\tlui\tt3, %hi(" << inst.des.name << ")\n";
+            fout << "\taddi\tt3, t3, %lo(" << inst.des.name << ")\n"; // 全局变量地址在t3寄存器中
+            fout << "\tlw\tt6, 0(t3)" << "\n";
         }
         else
         {
             fout << "\tlw\tt6, " << findOperand(inst.op1) << "(sp)" << "\n";
         }
-
+        fout.flush();
         if (isGlobal(inst.des.name))
         {
-            assert(0 && "to be continue");
+            fout << "\tlui\tt3, %hi(" << inst.des.name << ")\n";
+            fout << "\taddi\tt3, t3, %lo(" << inst.des.name << ")\n"; // 全局变量地址在t3寄存器中
+            fout << "\tsw\tt6, 0(t3)" << "\n";
         }
         else
         {
@@ -471,6 +481,51 @@ void backend::Generator::genInstLoad(const ir::Instruction &inst)
         fout << "\tlw\tt5, " << findOperand(inst.op1) << "(t3)\n";
         storeRegT5(inst.des);
     }
+}
+
+/**
+ * @brief 生成sub语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-08
+ */
+void backend::Generator::genInstSub(const ir::Instruction &inst)
+{
+    // TODO; lab3todo30 genInstSub
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    fout << "\tsub\t t5, t5, t4\n";
+    storeRegT5(inst.des);
+}
+
+/**
+ * @brief 生成div语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-08
+ */
+void backend::Generator::genInstDiv(const ir::Instruction &inst)
+{
+    // TODO; lab3todo31 genInstDiv
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    fout << "\tdiv\t t5, t5, t4\n";
+    storeRegT5(inst.des);
+}
+
+/**
+ * @brief 生成mod语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-08
+ */
+void backend::Generator::genInstMod(const ir::Instruction &inst)
+{
+    // TODO; lab3todo31 genInstDiv
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    fout << "\trem\t t5, t5, t4\n";
+    storeRegT5(inst.des);
 }
 
 /**

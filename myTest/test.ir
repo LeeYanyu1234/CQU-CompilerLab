@@ -1,19 +1,24 @@
 void global()
-	0: def t0, 3
-	1: mov a_Scp0, t0
-	2: def t1, 5
-	3: mov b_Scp0, t1
-	4: return null
+	0: return null
+end
+
+int func(int p_Scp1)
+	0: mov t0, p_Scp1
+	1: def t1, 1
+	2: sub t0, t0, t1
+	3: mov p_Scp1, t0
+	4: return p_Scp1
 end
 
 int main()
 	0: call null, global()
-	1: def a_Scp1, 5
-	2: mov t2, a_Scp1
-	3: add t2, t2, b_Scp0
-	4: return t2
+	1: def b_Scp1, 473289
+	2: def t2, 10
+	3: mov a_Scp0, t2
+	4: call t3, func(a_Scp0)
+	5: mov b_Scp1, t3
+	6: return b_Scp1
 end
 
 GVT:
 	a_Scp0 int 0
-	b_Scp0 int 0

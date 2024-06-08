@@ -74,6 +74,9 @@ namespace backend
         void genInstStore(const ir::Instruction &);
         void genInstMul(const ir::Instruction &);
         void genInstLoad(const ir::Instruction &);
+        void genInstSub(const ir::Instruction &);
+        void genInstDiv(const ir::Instruction &);
+        void genInstMod(const ir::Instruction &);
 
         void loadRegT5(const ir::Operand &);
         void loadRegT4(const ir::Operand &);
