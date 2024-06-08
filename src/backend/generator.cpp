@@ -385,9 +385,20 @@ void backend::Generator::genInstReturn(const ir::Instruction &inst)
     }
     else if (inst.op1.type == ir::Type::Int)
     {
-        fout << "\tlw\ta0, " << findOperand(inst.op1.name) << "(sp)\n";
-        recoverReg();
-        fout << "\tjr\tra\n";
+        if (isGlobal(inst.op1.name))
+        {
+            fout << "\tlui\tt3, %hi(" << inst.op1.name << ")\n";
+            fout << "\taddi\tt3, t3, %lo(" << inst.op1.name << ")\n"; // 全局变量地址在t3寄存器中
+            fout << "\tlw\ta0, 0(t3)" << "\n";
+            recoverReg();
+            fout << "\tjr\tra\n";
+        }
+        else
+        {
+            fout << "\tlw\ta0, " << findOperand(inst.op1.name) << "(sp)\n";
+            recoverReg();
+            fout << "\tjr\tra\n";
+        }
     }
     else
     {

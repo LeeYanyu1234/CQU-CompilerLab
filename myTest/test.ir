@@ -1,34 +1,107 @@
 void global()
-	0: return null
+	0: def t0, 0
+	1: mov g_Scp0, t0
+	2: return null
+end
+
+int func(int n_Scp1)
+	0: mov t1, g_Scp0
+	1: add t1, t1, n_Scp1
+	2: mov g_Scp0, t1
+	3: call null, putint(g_Scp0)
+	4: return g_Scp0
 end
 
 int main()
 	0: call null, global()
-	1: def t0, 4
-	2: mov a_Scp0, t0
-	3: def t1, 4
-	4: mov b_Scp0, t1
-	5: def c_Scp1, 473289
-	6: mov t2, a_Scp0
-	7: eq t2, t2, b_Scp0
-	8: mov t5, t2
-	9: eq t6, t5, 0
-	10: if t6 goto [pc, 5]
-	11: mov t3, a_Scp0
-	12: def t4, 3
-	13: neq t3, t3, t4
-	14: and t5, t5, t3
-	15: if t5 goto [pc, 2]
-	16: goto [pc, 4]
-	17: def t7, 1
-	18: mov c_Scp1, t7
-	19: goto [pc, 3]
-	20: def t8, 0
-	21: mov c_Scp1, t8
-	22: __unuse__ null, null, null
-	23: return c_Scp1
+	1: def i_Scp1, 473289
+	2: call t2, getint()
+	3: mov i_Scp1, t2
+	4: mov t3, i_Scp1
+	5: def t4, 10
+	6: gtr t3, t3, t4
+	7: mov t6, t3
+	8: eq t7, t6, 0
+	9: if t7 goto [pc, 3]
+	10: call t5, func(i_Scp1)
+	11: and t6, t6, t5
+	12: if t6 goto [pc, 2]
+	13: goto [pc, 4]
+	14: def t8, 1
+	15: mov i_Scp1, t8
+	16: goto [pc, 3]
+	17: def t9, 0
+	18: mov i_Scp1, t9
+	19: __unuse__ null, null, null
+	20: call t10, getint()
+	21: mov i_Scp1, t10
+	22: mov t11, i_Scp1
+	23: def t12, 11
+	24: gtr t11, t11, t12
+	25: mov t14, t11
+	26: eq t15, t14, 0
+	27: if t15 goto [pc, 3]
+	28: call t13, func(i_Scp1)
+	29: and t14, t14, t13
+	30: if t14 goto [pc, 2]
+	31: goto [pc, 4]
+	32: def t16, 1
+	33: mov i_Scp1, t16
+	34: goto [pc, 3]
+	35: def t17, 0
+	36: mov i_Scp1, t17
+	37: __unuse__ null, null, null
+	38: call t18, getint()
+	39: mov i_Scp1, t18
+	40: mov t19, i_Scp1
+	41: def t20, 99
+	42: leq t19, t19, t20
+	43: mov t22, t19
+	44: if t22 goto [pc, 3]
+	45: call t21, func(i_Scp1)
+	46: or t22, t22, t21
+	47: if t22 goto [pc, 2]
+	48: goto [pc, 4]
+	49: def t23, 1
+	50: mov i_Scp1, t23
+	51: goto [pc, 3]
+	52: def t24, 0
+	53: mov i_Scp1, t24
+	54: __unuse__ null, null, null
+	55: call t25, getint()
+	56: mov i_Scp1, t25
+	57: mov t26, i_Scp1
+	58: def t27, 100
+	59: leq t26, t26, t27
+	60: mov t29, t26
+	61: if t29 goto [pc, 3]
+	62: call t28, func(i_Scp1)
+	63: or t29, t29, t28
+	64: if t29 goto [pc, 2]
+	65: goto [pc, 4]
+	66: def t30, 1
+	67: mov i_Scp1, t30
+	68: goto [pc, 3]
+	69: def t31, 0
+	70: mov i_Scp1, t31
+	71: __unuse__ null, null, null
+	72: call t32, func(99)
+	73: eq t33, 0, t32
+	74: mov t35, t33
+	75: eq t36, t35, 0
+	76: if t36 goto [pc, 3]
+	77: call t34, func(100)
+	78: and t35, t35, t34
+	79: if t35 goto [pc, 2]
+	80: goto [pc, 4]
+	81: def t37, 1
+	82: mov i_Scp1, t37
+	83: goto [pc, 3]
+	84: def t38, 0
+	85: mov i_Scp1, t38
+	86: __unuse__ null, null, null
+	87: return 0
 end
 
 GVT:
-	a_Scp0 int 0
-	b_Scp0 int 0
+	g_Scp0 int 0
