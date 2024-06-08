@@ -474,7 +474,7 @@ void backend::Generator::genInstLoad(const ir::Instruction &inst)
 }
 
 /**
- * @brief 把操作数加载到t5寄存器
+ * @brief 把操作数1加载到t5寄存器
  * @param op
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-06-07
@@ -482,16 +482,30 @@ void backend::Generator::genInstLoad(const ir::Instruction &inst)
 void backend::Generator::loadRegT5(const ir::Operand &op)
 {
     // TODO; lab3todo23 loadRegT5
-    if (op.type == ir::Type::Int)
+    if (isGlobal(op.name)) // 如果是全局变量
     {
-        fout << "\tlw\tt5 ," << findOperand(op) << "(sp)\n";
+        if (op.type == ir::Type::Int) // 如果是全局普通变量
+        {
+            fout << "\tlui\tt3, %hi(" << op.name << ")\n";
+            fout << "\taddi\tt3, t3, %lo(" << op.name << ")\n"; // 全局变量地址在t3寄存器中
+            fout << "\tlw\tt5, 0(t3)\n";
+        }
+        else
+            assert(0 && "to be continue");
     }
     else
-        assert(0 && "to be continue");
+    {
+        if (op.type == ir::Type::Int)
+        {
+            fout << "\tlw\tt5, " << findOperand(op) << "(sp)\n";
+        }
+        else
+            assert(0 && "to be continue");
+    }
 }
 
 /**
- * @brief 把操作数加载到t4寄存器
+ * @brief 把操作数2加载到t4寄存器
  * @param op
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-06-07
@@ -499,12 +513,26 @@ void backend::Generator::loadRegT5(const ir::Operand &op)
 void backend::Generator::loadRegT4(const ir::Operand &op)
 {
     // TODO; lab3todo24 loadRegT4
-    if (op.type == ir::Type::Int)
+    if (isGlobal(op.name)) // 如果是全局变量
     {
-        fout << "\tlw\tt4, " << findOperand(op) << "(sp)\n";
+        if (op.type == ir::Type::Int) // 如果是全局普通变量
+        {
+            fout << "\tlui\tt3, %hi(" << op.name << ")\n";
+            fout << "\taddi\tt3, t3, %lo(" << op.name << ")\n"; // 全局变量地址在t3寄存器中
+            fout << "\tlw\tt4, 0(t3)\n";
+        }
+        else
+            assert(0 && "to be continue");
     }
     else
-        assert(0 && "to be continue");
+    {
+        if (op.type == ir::Type::Int)
+        {
+            fout << "\tlw\tt4, " << findOperand(op) << "(sp)\n";
+        }
+        else
+            assert(0 && "to be continue");
+    }
 }
 
 /**
@@ -647,6 +675,8 @@ bool backend::Generator::isGlobal(const std::string &name)
 int backend::Generator::findOperand(ir::Operand opd)
 {
     // TODO; lab3todo18 findOperand
+    if (stackVarMap.find(opd.name) == stackVarMap.end())
+        assert(0 && "can not find opd in stack");
     return stackVarMap[opd.name];
 }
 

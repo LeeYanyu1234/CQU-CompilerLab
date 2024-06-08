@@ -1,23 +1,19 @@
 void global()
-	0: alloc a_Scp0, 5
-	1: store 0, a_Scp0, 0
-	2: store 1, a_Scp0, 1
-	3: store 2, a_Scp0, 2
-	4: store 3, a_Scp0, 3
-	5: store 4, a_Scp0, 4
-	6: return null
+	0: def t0, 3
+	1: mov a_Scp0, t0
+	2: def t1, 5
+	3: mov b_Scp0, t1
+	4: return null
 end
 
 int main()
 	0: call null, global()
-	1: def t0, 0
-	2: def t1, 1
-	3: def t2, 4
-	4: mul t1, t1, t2
-	5: add t0, t0, t1
-	6: load t3, a_Scp0, t0
-	7: return t3
+	1: def a_Scp1, 5
+	2: mov t2, a_Scp1
+	3: add t2, t2, b_Scp0
+	4: return t2
 end
 
 GVT:
-	a_Scp0 int* 5
+	a_Scp0 int 0
+	b_Scp0 int 0
