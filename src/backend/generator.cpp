@@ -191,10 +191,16 @@ void backend::Generator::gen_func(const ir::Function &func)
     setLabel(func.name);
 
     saveReg(func);
+    genJumpLabel(func);
 
+    int idx = 0;
     for (const ir::Instruction *inst : func.InstVec)
     {
-        gen_instr(*inst);
+        if (instLabelMap.find(idx) != instLabelMap.end())
+        {
+            setLabel(instLabelMap[idx]);
+        }
+        gen_instr(*inst, idx++);
     }
 
     fout << "\t.size\t" << func.name << ", .-" << func.name << "\n";
@@ -202,11 +208,12 @@ void backend::Generator::gen_func(const ir::Function &func)
 
 /**
  * @brief 根据ir指令生成riscv汇编指令
- * @param inst ir指令
+ * @param inst
+ * @param idx 用于goto指令设置跳转标签
  * @author LeeYanyu1234 (343820386@qq.com)
- * @date 2024-06-06
+ * @date 2024-06-08
  */
-void backend::Generator::gen_instr(const ir::Instruction &inst)
+void backend::Generator::gen_instr(const ir::Instruction &inst, int idx)
 {
     // TODO; lab3todo11 gen_instr
     ir::Operator op = inst.op;
@@ -234,8 +241,23 @@ void backend::Generator::gen_instr(const ir::Instruction &inst)
         genInstDiv(inst);
     else if (op == ir::Operator::mod)
         genInstMod(inst);
+    else if (op == ir::Operator::eq)
+        genInstEq(inst);
+    else if (op == ir::Operator::_goto)
+        genInstGoto(inst, idx);
+    else if (op == ir::Operator::_or)
+        genInstOr(inst);
+    else if (op == ir::Operator::_and)
+        genInstAnd(inst);
+    else if (op == ir::Operator::__unuse__)
+        genInstUnuse(inst);
+    else if (op == ir::Operator::lss)
+        genInstLss(inst);
+    else if (op == ir::Operator::gtr)
+        genInstGtr(inst);
     else
         assert(0 && "to be continue");
+    fout.flush();
 }
 
 /**
@@ -292,6 +314,32 @@ void backend::Generator::saveReg(const ir::Function &func)
         else
         {
             assert(0 && "to be continue");
+        }
+    }
+}
+
+/**
+ * @brief 为每一条goto指令的目标指令生成一个标签，方便跳转
+ * @param func
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-08
+ */
+void backend::Generator::genJumpLabel(const ir::Function &func)
+{
+    // TODO; lab3todo34 genJumpLabel
+    instLabelMap.clear();
+    instLabelSize = 0;
+    for (int i = 0; i < func.InstVec.size(); i++)
+    {
+        auto inst = func.InstVec[i];
+        if (inst->op == ir::Operator::_goto)
+        {
+            int offset = std::stoi(inst->des.name);           // 相对于当前指令的跳转偏移量
+            int idx = i + offset;                             // 目标指令的索引
+            if (instLabelMap.find(idx) == instLabelMap.end()) // 如果这条指令还没有被打标签
+            {
+                instLabelMap[idx] = func.name + "_label_" + std::to_string(instLabelSize++); // 那就添加一个映射
+            }
         }
     }
 }
@@ -367,7 +415,8 @@ void backend::Generator::genInstCall(const ir::Instruction &inst)
                 assert(0 && "to be continue");
         }
         fout << "\tcall\t" << inst.op1.name << "\n";
-        fout << "\tsw\ta0, " << findOperand(inst.des.name) << "(sp)\n";
+        if (inst.des.name != "null") // 返回值不为空时才接收返回值
+            fout << "\tsw\ta0, " << findOperand(inst.des.name) << "(sp)\n";
     }
 }
 
@@ -428,6 +477,7 @@ void backend::Generator::genInstMov(const ir::Instruction &inst)
     {
         assert(0 && "to be continue");
     }
+    fout.flush();
 }
 
 /**
@@ -454,7 +504,7 @@ void backend::Generator::genInstAdd(const ir::Instruction &inst)
 void backend::Generator::genInstAlloc(const ir::Instruction &inst)
 {
     // TODO; lab3todo26 genInstAlloc
-    //* 已经计算栈大小时分配空间，所以这里什么都不做
+    //* 已经在计算栈大小时分配空间，所以这里什么都不做
     return;
 }
 
@@ -556,10 +606,148 @@ void backend::Generator::genInstDiv(const ir::Instruction &inst)
  */
 void backend::Generator::genInstMod(const ir::Instruction &inst)
 {
-    // TODO; lab3todo31 genInstDiv
+    // TODO; lab3todo32 genInstMod
     loadRegT5(inst.op1);
     loadRegT4(inst.op2);
     fout << "\trem\t t5, t5, t4\n";
+    storeRegT5(inst.des);
+}
+
+/**
+ * @brief 生成eq语句对应的汇编语句
+ * @param inst
+ * @note RISC-V 并没有一个直接的 eq 伪指令
+ * @note 先通过xor进行按位异或，如果值相等，结果为0
+ * @note 然后通过seqz伪指令进行计算
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-08
+ */
+void backend::Generator::genInstEq(const ir::Instruction &inst)
+{
+    // TODO; lab3todo33 genInstEq
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    fout << "\txor\tt5, t5, t4\n";
+    fout << "\tseqz\tt5, t5\n";
+    storeRegT5(inst.des);
+}
+
+/**
+ * @brief 生成goto语句对应的汇编语句
+ * @param inst
+ * @param idx
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-08
+ */
+void backend::Generator::genInstGoto(const ir::Instruction &inst, int idx)
+{
+    // TODO; lab3todo35 genInstGoto
+    int offset = std::stoi(inst.des.name);
+    idx += offset;
+    if (instLabelMap.find(idx) == instLabelMap.end())
+    {
+        assert(0 && "don't have this inst label");
+    }
+
+    if (inst.op1.name == "null") // 无条件跳转
+    {
+        fout << "\tj\t" << instLabelMap[idx] << "\n";
+    }
+    else // 有条件跳转
+    {
+        loadRegT5(inst.op1);
+        fout << "\tbne\tt5, zero, " << instLabelMap[idx] << "\n";
+    }
+}
+
+/**
+ * @brief 生成or语句对应的汇编语句
+ * @param inst
+ * @note riscv提供的是按位或，而我们需要的是逻辑或
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-08
+ */
+void backend::Generator::genInstOr(const ir::Instruction &inst)
+{
+    // TODO; lab3todo36 genInstOr
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    std::string setTrue = ".or_set_true_" + std::to_string(orCnt);
+    std::string end = ".or_end_" + std::to_string(orCnt++);
+    fout << "\tbnez\tt5, " << setTrue << "\n "; // 如果 t5 不为零，跳转到 set_true
+    fout << "\tbnez\tt4, " << setTrue << "\n "; // 如果 t4 不为零，跳转到 set_true
+    fout << "\tli\tt5, 0\n";                    // 表示逻辑假
+    fout << "\tj\t" << end << "\n";
+    setLabel(setTrue);
+    fout << "\tli\tt5, 1\n"; // 表示逻辑真
+    setLabel(end);
+    storeRegT5(inst.des);
+}
+
+/**
+ * @brief 生成and语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-08
+ */
+void backend::Generator::genInstAnd(const ir::Instruction &inst)
+{
+    // TODO; lab3todo37 genInstAnd
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    std::string setFalse = ".and_set_false_" + std::to_string(andCnt);
+    std::string end = ".and_end_" + std::to_string(andCnt++);
+    fout << "\tbeqz\tt5, " << setFalse << "\n "; // 如果 t5 为零，跳转到 set_false
+    fout << "\tbeqz\tt4, " << setFalse << "\n "; // 如果 t4 为零，跳转到 set_false
+    fout << "\tli\tt5, 1\n";                     // 表示逻辑真
+    fout << "\tj\t" << end << "\n";
+    setLabel(setFalse);
+    fout << "\tli\tt5, 0\n"; // 表示逻辑假
+    setLabel(end);
+    storeRegT5(inst.des);
+}
+
+/**
+ * @brief 生成unuse语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-08
+ */
+void backend::Generator::genInstUnuse(const ir::Instruction &inst)
+{
+    // TODO; lab3todo38 genInstUnuse
+    fout << "\tnop\n";
+}
+
+/**
+ * @brief 生成lss语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-08
+ */
+void backend::Generator::genInstLss(const ir::Instruction &inst)
+{
+    // TODO; lab3todo39 genInstLss
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    fout << "\tslt\t t5, t5, t4\n";
+    storeRegT5(inst.des);
+}
+
+/**
+ * @brief 生成gtr语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-08
+ */
+void backend::Generator::genInstGtr(const ir::Instruction &inst)
+{
+    // TODO; lab3todo40 genInstGtr
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    // fout << "\tslt\tt5, t5, t4\n";
+    // fout << "\txori\tt5, t5, 1\n";
+    fout << "\tsgt\tt5, t5, t4\n";
     storeRegT5(inst.des);
 }
 
@@ -588,6 +776,10 @@ void backend::Generator::loadRegT5(const ir::Operand &op)
         if (op.type == ir::Type::Int)
         {
             fout << "\tlw\tt5, " << findOperand(op) << "(sp)\n";
+        }
+        else if (op.type == ir::Type::IntLiteral)
+        {
+            fout << "\tli\tt5, " << op.name << "\n";
         }
         else
             assert(0 && "to be continue");
@@ -620,9 +812,14 @@ void backend::Generator::loadRegT4(const ir::Operand &op)
         {
             fout << "\tlw\tt4, " << findOperand(op) << "(sp)\n";
         }
+        else if (op.type == ir::Type::IntLiteral)
+        {
+            fout << "\tli\tt4, " << op.name << "\n";
+        }
         else
             assert(0 && "to be continue");
     }
+    fout.flush();
 }
 
 /**

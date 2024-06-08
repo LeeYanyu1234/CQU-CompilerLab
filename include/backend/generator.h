@@ -39,29 +39,34 @@ namespace backend
     struct Generator
     {
         // TODO; lab3todo18 Generator
-        const ir::Program &program;             // the program to gen
-        std::ofstream &fout;                    // output file
-        std::map<std::string, int> stackVarMap; // 栈中变量与偏移量的映射表
-        int stackSize = 0;                      // 栈大小
+        const ir::Program &program;              // the program to gen
+        std::ofstream &fout;                     // output file
+        std::map<std::string, int> stackVarMap;  // 栈中变量与偏移量的映射表
+        int stackSize;                           // 栈大小
+        std::map<int, std::string> instLabelMap; // 指令地址与标签的映射
+        int instLabelSize;                       // 指令地址标签计数
+        int orCnt = 0;                           // or指令跳转计数
+        int andCnt = 0;                          // and指令跳转计数
 
         Generator(ir::Program &, std::ofstream &);
 
         // reg allocate api
-        rv::rvREG getRd(ir::Operand);
-        rv::rvFREG fgetRd(ir::Operand);
-        rv::rvREG getRs1(ir::Operand);
-        rv::rvREG getRs2(ir::Operand);
-        rv::rvFREG fgetRs1(ir::Operand);
-        rv::rvFREG fgetRs2(ir::Operand);
+        // rv::rvREG getRd(ir::Operand);
+        // rv::rvFREG fgetRd(ir::Operand);
+        // rv::rvREG getRs1(ir::Operand);
+        // rv::rvREG getRs2(ir::Operand);
+        // rv::rvFREG fgetRs1(ir::Operand);
+        // rv::rvFREG fgetRs2(ir::Operand);
 
         // generate wrapper function
         void gen();
         void initGlobaVar(const ir::Function &);
         void gen_func(const ir::Function &);
-        void gen_instr(const ir::Instruction &);
+        void gen_instr(const ir::Instruction &, int idx);
 
         // 辅助函数生成
         void saveReg(const ir::Function &);
+        void genJumpLabel(const ir::Function &);
         void recoverReg();
 
         // 辅助代码生成
@@ -77,6 +82,13 @@ namespace backend
         void genInstSub(const ir::Instruction &);
         void genInstDiv(const ir::Instruction &);
         void genInstMod(const ir::Instruction &);
+        void genInstEq(const ir::Instruction &);
+        void genInstGoto(const ir::Instruction &, int idx);
+        void genInstOr(const ir::Instruction &);
+        void genInstAnd(const ir::Instruction &);
+        void genInstUnuse(const ir::Instruction &);
+        void genInstLss(const ir::Instruction &);
+        void genInstGtr(const ir::Instruction &);
 
         void loadRegT5(const ir::Operand &);
         void loadRegT4(const ir::Operand &);

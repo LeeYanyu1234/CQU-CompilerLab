@@ -26,7 +26,7 @@
                 // "./test/testcase/basic/17_div.sy",
                 // "./test/testcase/basic/18_divc.sy",
                 // "./test/testcase/basic/20_rem.sy",
-                "./test/testcase/basic/21_if_test2.sy",
+                // "./test/testcase/basic/21_if_test2.sy",
                 // "./test/testcase/basic/22_if_test3.sy",
                 // "./test/testcase/basic/23_if_test4.sy",
                 // "./test/testcase/basic/25_while_if.sy",
@@ -45,7 +45,7 @@
                 // "./test/testcase/basic/42_empty_stmt.sy",
                 // "./test/testcase/basic/45_comment1.sy",
                 // "./test/testcase/function/28_while_test3.sy",
-                // "./test/testcase/function/34_arr_expr_len.sy",
+                "./test/testcase/function/34_arr_expr_len.sy",
                 // "./test/testcase/function/38_op_priority4.sy",
                 // "./test/testcase/function/39_op_priority5.sy",
                 // "./test/testcase/function/43_logi_assign.sy",
@@ -86,7 +86,7 @@
                 }
             ],
             "miDebuggerPath": "/usr/bin/gdb",
-            "preLaunchTask": "build",
+            // "preLaunchTask": "build",
             "logging": {
                 "engineLogging": true
             }

@@ -2,23 +2,71 @@ void global()
 	0: return null
 end
 
-int func(int p_Scp1)
-	0: mov t0, p_Scp1
-	1: def t1, 1
-	2: sub t0, t0, t1
-	3: mov p_Scp1, t0
-	4: return p_Scp1
+int ifElseIf()
+	0: def a_Scp1, 473289
+	1: def t0, 5
+	2: mov a_Scp1, t0
+	3: def b_Scp1, 473289
+	4: def t1, 10
+	5: mov b_Scp1, t1
+	6: mov t2, a_Scp1
+	7: def t3, 6
+	8: eq t2, t2, t3
+	9: mov t6, t2
+	10: if t6 goto [pc, 5]
+	11: mov t4, b_Scp1
+	12: def t5, 11
+	13: eq t4, t4, t5
+	14: or t6, t6, t4
+	15: if t6 goto [pc, 2]
+	16: goto [pc, 3]
+	17: return a_Scp1
+	18: goto [pc, 37]
+	19: mov t7, b_Scp1
+	20: def t8, 10
+	21: eq t7, t7, t8
+	22: mov t11, t7
+	23: eq t12, t11, 0
+	24: if t12 goto [pc, 5]
+	25: mov t9, a_Scp1
+	26: def t10, 1
+	27: eq t9, t9, t10
+	28: and t11, t11, t9
+	29: if t11 goto [pc, 2]
+	30: goto [pc, 4]
+	31: def t13, 25
+	32: mov a_Scp1, t13
+	33: goto [pc, 21]
+	34: mov t14, b_Scp1
+	35: def t15, 10
+	36: eq t14, t14, t15
+	37: mov t18, t14
+	38: eq t19, t18, 0
+	39: if t19 goto [pc, 5]
+	40: mov t16, a_Scp1
+	41: def t17, -5
+	42: eq t16, t16, t17
+	43: and t18, t18, t16
+	44: if t18 goto [pc, 2]
+	45: goto [pc, 6]
+	46: mov t20, a_Scp1
+	47: def t21, 15
+	48: add t20, t20, t21
+	49: mov a_Scp1, t20
+	50: goto [pc, 3]
+	51: sub t22, 0, a_Scp1
+	52: mov a_Scp1, t22
+	53: __unuse__ null, null, null
+	54: __unuse__ null, null, null
+	55: __unuse__ null, null, null
+	56: return a_Scp1
 end
 
 int main()
 	0: call null, global()
-	1: def b_Scp1, 473289
-	2: def t2, 10
-	3: mov a_Scp0, t2
-	4: call t3, func(a_Scp0)
-	5: mov b_Scp1, t3
-	6: return b_Scp1
+	1: call t23, ifElseIf()
+	2: call null, putint(t23)
+	3: return 0
 end
 
 GVT:
-	a_Scp0 int 0
