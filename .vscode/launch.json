@@ -86,7 +86,7 @@
                 }
             ],
             "miDebuggerPath": "/usr/bin/gdb",
-            // "preLaunchTask": "build",
+            "preLaunchTask": "build",
             "logging": {
                 "engineLogging": true
             }

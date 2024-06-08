@@ -1415,8 +1415,8 @@ void frontend::Analyzer::analyzeVarDef(VarDef *root, vector<ir::Instruction *> &
             else // 如果是数组，符号表中为整型指针
             {
                 symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::IntPtr), dimension, size);
-                if (symbol_table.scope_stack.size() > 1) // 如果不是全局变量，需要添加一条alloc指令分配空间
-                    buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::IntPtr}, {Operator::alloc}));
+                // if (symbol_table.scope_stack.size() > 1) // 如果不是全局变量，需要添加一条alloc指令分配空间
+                buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::IntPtr}, {Operator::alloc}));
             }
         }
         else if (type == Type::Float) // 变量类型为浮点型
@@ -1429,8 +1429,8 @@ void frontend::Analyzer::analyzeVarDef(VarDef *root, vector<ir::Instruction *> &
             else // 如果是数组，符号表中为浮点型指针
             {
                 symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::FloatPtr), dimension, size);
-                if (symbol_table.scope_stack.size() > 1) // 如果不是全局变量，需要添加一条alloc指令分配空间
-                    buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::FloatPtr}, {Operator::alloc}));
+                // if (symbol_table.scope_stack.size() > 1) // 如果不是全局变量，需要添加一条alloc指令分配空间
+                buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::FloatPtr}, {Operator::alloc}));
             }
         }
         else
@@ -1589,8 +1589,9 @@ void frontend::Analyzer::analyzeInitVal(InitVal *root, vector<ir::Instruction *>
         // Operand expVar = exp->t == Type::IntLiteral ? IntLiteral2Int(exp->v, buffer) : FloatLiteral2Float(exp->v, buffer);
         if (root->t == Type::Int && exp->t == Type::IntLiteral)
         {
-            Operand expVar = IntLiteral2Int(exp->v, buffer);
-            buffer.push_back(new Instruction({root->v, Type::IntPtr}, {TOS(offset), Type::IntLiteral}, {expVar}, {Operator::store}));
+            buffer.push_back(new Instruction({root->v, Type::IntPtr}, {TOS(offset), Type::IntLiteral}, {exp->v, exp->t}, {Operator::store}));
+            //     Operand expVar = IntLiteral2Int(exp->v, buffer);
+            //     buffer.push_back(new Instruction({root->v, Type::IntPtr}, {TOS(offset), Type::IntLiteral}, {expVar}, {Operator::store}));
         }
         else if (root->t == Type::Float && exp->t == Type::FloatLiteral)
         {

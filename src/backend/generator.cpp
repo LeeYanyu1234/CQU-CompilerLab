@@ -127,6 +127,11 @@ void backend::Generator::initGlobaVar(const ir::Function &func)
             fout << "\t.size\t" << loadInst->des.name << ", " << stoi(loadInst->op1.name) * 4 << "\n";
             setLabel(loadInst->des.name);
             initVal[loadInst->des.name] = 1;
+            // if (func.InstVec[i + 1]->op == ir::Operator::def)
+            // {
+            // }
+            // else
+            // {
             for (int j = i + 1;; j++) // 处理数组的初始化
             {
                 if (func.InstVec[j]->op == ir::Operator::store)
@@ -134,7 +139,7 @@ void backend::Generator::initGlobaVar(const ir::Function &func)
                     ir::Instruction *storeInst(func.InstVec[j]);
                     if (storeInst->des.type == ir::Type::IntLiteral)
                     {
-                        setIntInitVar(storeInst->op2.name);
+                        setIntInitVar(storeInst->des.name);
                     }
                     else
                         assert(0 && "to be continue");
@@ -145,6 +150,7 @@ void backend::Generator::initGlobaVar(const ir::Function &func)
                     break;
                 }
             }
+            // }
         }
         else if (func.InstVec[i]->op == ir::Operator::_return)
         {
