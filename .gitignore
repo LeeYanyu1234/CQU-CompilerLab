@@ -331,3 +331,4 @@ test/output/function/43_logi_assign.exe
 test/output/function/52_scope.exe
 test/output/function/50_short_circuit.exe
 test/output/function/78_side_effect.exe
+test/output/function/51_short_circuit3.exe

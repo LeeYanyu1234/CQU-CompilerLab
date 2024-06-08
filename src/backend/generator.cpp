@@ -265,6 +265,8 @@ void backend::Generator::gen_instr(const ir::Instruction &inst, int idx)
         genInstNeq(inst);
     else if (op == ir::Operator::leq)
         genInstLeq(inst);
+    else if (op == ir::Operator::geq)
+        genInstGeq(inst);
     else
         assert(0 && "to be continue");
     fout.flush();
@@ -789,7 +791,7 @@ void backend::Generator::genInstNeq(const ir::Instruction &inst)
 /**
  * @brief 生成leq语句对应的汇编语句
  * @param inst
- * @note 小于等于=大于
+ * @note 小于等于=大于取反
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-06-08
  */
@@ -799,6 +801,23 @@ void backend::Generator::genInstLeq(const ir::Instruction &inst)
     loadRegT5(inst.op1);
     loadRegT4(inst.op2);
     fout << "\tsgt\tt5, t5, t4\n";
+    fout << "\tseqz\tt5, t5\n";
+    storeRegT5(inst.des);
+}
+
+/**
+ * @brief 生成geq语句对应的汇编语句
+ * @param inst
+ * @note 大于等于=小于取反
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-08
+ */
+void backend::Generator::genInstGeq(const ir::Instruction &inst)
+{
+    // TODO; lab3todo43 genInstGeq
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    fout << "\tslt\tt5, t5, t4\n";
     fout << "\tseqz\tt5, t5\n";
     storeRegT5(inst.des);
 }
