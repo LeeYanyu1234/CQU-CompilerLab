@@ -75,9 +75,9 @@ namespace backend
         void genInstMul(const ir::Instruction &);
         void genInstLoad(const ir::Instruction &);
 
-        void loadVarOp1(const ir::Operand &);
-        void loadVarOp2(const ir::Operand &);
-        void storeVarDes(const ir::Operand &);
+        void loadRegT5(const ir::Operand &);
+        void loadRegT4(const ir::Operand &);
+        void storeRegT5(const ir::Operand &);
 
         // 设置对应字段
         void setOption();

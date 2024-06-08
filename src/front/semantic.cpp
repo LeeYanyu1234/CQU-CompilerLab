@@ -1735,11 +1735,12 @@ void frontend::Analyzer::analyzeConstDef(ConstDef *root, vector<ir::Instruction 
         else // 如果是整型数组
         {
             symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::IntPtr), dimension, size, true);
-            constInitVal->t = Type::IntLiteral;      //? 数组需要添加定义指令，此时指代初始值的期望类型
-            if (symbol_table.scope_stack.size() > 1) // 如果不是一个全局变量，需要通过alloc分配空间
-            {
-                buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::IntPtr}, {Operator::alloc}));
-            }
+            constInitVal->t = Type::IntLiteral; //? 数组需要添加定义指令，此时指代初始值的期望类型
+
+            // if (symbol_table.scope_stack.size() > 1) // 如果不是一个全局变量，需要通过alloc分配空间
+            // {
+            buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::IntPtr}, {Operator::alloc}));
+            // }
         }
     }
     else if (type == Type::Float) // 常量类型为浮点型

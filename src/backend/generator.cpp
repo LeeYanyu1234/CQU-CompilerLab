@@ -104,9 +104,9 @@ void backend::Generator::initGlobaVar(const ir::Function &func)
 
     std::map<std::string, int> initVal;
 
-    for (int i = 0; i < func.InstVec.size(); i += 2)
+    for (int i = 0; i < func.InstVec.size(); i++)
     {
-        if (func.InstVec[i]->op == ir::Operator::def)
+        if (func.InstVec[i]->op == ir::Operator::def) // 处理全局普通整型变量
         {
             ir::Instruction *defInst = func.InstVec[i];
             ir::Instruction *movInst = func.InstVec[i + 1];
@@ -116,6 +116,34 @@ void backend::Generator::initGlobaVar(const ir::Function &func)
             setLabel(movInst->des.name);
             setIntInitVar(defInst->op1.name);
             initVal[movInst->des.name] = 1;
+            i++;
+        }
+        else if (func.InstVec[i]->op == ir::Operator::alloc) // 处理数组
+        {
+            ir::Instruction *loadInst(func.InstVec[i]);
+            setGlobal(loadInst->des.name);
+            setTypeObj(loadInst->des.name);
+            fout << "\t.size\t" << loadInst->des.name << ", " << stoi(loadInst->op1.name) * 4 << "\n";
+            setLabel(loadInst->des.name);
+            initVal[loadInst->des.name] = 1;
+            for (int j = i + 1;; j++) // 处理数组的初始化
+            {
+                if (func.InstVec[j]->op == ir::Operator::store)
+                {
+                    ir::Instruction *storeInst(func.InstVec[j]);
+                    if (storeInst->des.type == ir::Type::IntLiteral)
+                    {
+                        setIntInitVar(storeInst->op2.name);
+                    }
+                    else
+                        assert(0 && "to be continue");
+                }
+                else
+                {
+                    i = j - 1;
+                    break;
+                }
+            }
         }
         else if (func.InstVec[i]->op == ir::Operator::_return)
         {
@@ -127,15 +155,15 @@ void backend::Generator::initGlobaVar(const ir::Function &func)
         }
     }
 
-    for (auto globalVar : program.globalVal)
+    for (auto globalVar : program.globalVal) // 处理未初始化的全局变量
     {
         if (initVal[globalVar.val.name] != 1)
         {
-            if (globalVar.val.type == ir::Type::IntPtr)
+            if (globalVar.val.type == ir::Type::IntPtr) // 数组
             {
                 fout << "\t.comm\t" << globalVar.val.name << ", " << globalVar.maxlen * 4 << ", 4\n";
             }
-            else if (globalVar.val.type == ir::Type::Int)
+            else if (globalVar.val.type == ir::Type::Int) // 普通变量
             {
                 fout << "\t.comm\t" << globalVar.val.name << ", 4, 4\n";
             }
@@ -145,6 +173,7 @@ void backend::Generator::initGlobaVar(const ir::Function &func)
             }
         }
     }
+    fout.flush();
 }
 
 /**
@@ -365,10 +394,10 @@ void backend::Generator::genInstMov(const ir::Instruction &inst)
 void backend::Generator::genInstAdd(const ir::Instruction &inst)
 {
     // TODO; lab3todo22 genInstAdd
-    loadVarOp1(inst.op1);
-    loadVarOp2(inst.op2);
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
     fout << "\tadd\t t5, t5, t4\n";
-    storeVarDes(inst.des);
+    storeRegT5(inst.des);
 }
 
 /**
@@ -395,7 +424,7 @@ void backend::Generator::genInstStore(const ir::Instruction &inst)
     // TODO; lab3todo27 genInstStore
     if (inst.des.type == ir::Type::Int && inst.op2.type == ir::Type::IntLiteral)
     {
-        loadVarOp1(inst.des);
+        loadRegT5(inst.des);
         fout << "\tsw\tt5, " << findOperand(inst.op1) + stoi(inst.op2.name) * 4 << "(sp)\n";
     }
 }
@@ -409,10 +438,10 @@ void backend::Generator::genInstStore(const ir::Instruction &inst)
 void backend::Generator::genInstMul(const ir::Instruction &inst)
 {
     // TODO; lab3todo28 genInstMul
-    loadVarOp1(inst.op1);
-    loadVarOp2(inst.op2);
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
     fout << "\tmul\t t5, t5, t4\n";
-    storeVarDes(inst.des);
+    storeRegT5(inst.des);
 }
 
 /**
@@ -424,17 +453,35 @@ void backend::Generator::genInstMul(const ir::Instruction &inst)
 void backend::Generator::genInstLoad(const ir::Instruction &inst)
 {
     // TODO; lab3todo29 genInstLoad
-    loadVarOp2(inst.op2);
-    fout << "\tslli\tt4, t4, 2\n";
-    fout << "\tadd\tt3, sp, t4\n";
-    fout << "\tlw\tt5, " << findOperand(inst.op1) << "(t3)\n";
-    storeVarDes(inst.des);
-    fout.flush();
+    if (isGlobal(inst.op1.name)) // 如果是全局变量数组
+    {
+        fout << "\tlui\tt3, %hi(" << inst.op1.name << ")\n";
+        fout << "\taddi\tt3, t3, %lo(" << inst.op1.name << ")\n"; // 全局数组的基地址在t3寄存器中
+        loadRegT4(inst.op2);                                      // 加载偏移量到t4寄存器
+        fout << "\tslli\tt4, t4, 2\n";                            // 偏移量*4
+        fout << "\tadd\tt3, t3, t4\n";                            // 计算地址
+        fout << "\tlw\tt5, 0(t3)\n";
+        storeRegT5(inst.des);
+    }
+    else // 如果是局部变量数组
+    {
+        loadRegT4(inst.op2);
+        fout << "\tslli\tt4, t4, 2\n";
+        fout << "\tadd\tt3, sp, t4\n";
+        fout << "\tlw\tt5, " << findOperand(inst.op1) << "(t3)\n";
+        storeRegT5(inst.des);
+    }
 }
 
-void backend::Generator::loadVarOp1(const ir::Operand &op)
+/**
+ * @brief 把操作数加载到t5寄存器
+ * @param op
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-07
+ */
+void backend::Generator::loadRegT5(const ir::Operand &op)
 {
-    // TODO; lab3todo23 loadVarOp1
+    // TODO; lab3todo23 loadRegT5
     if (op.type == ir::Type::Int)
     {
         fout << "\tlw\tt5 ," << findOperand(op) << "(sp)\n";
@@ -442,26 +489,41 @@ void backend::Generator::loadVarOp1(const ir::Operand &op)
     else
         assert(0 && "to be continue");
 }
-void backend::Generator::loadVarOp2(const ir::Operand &op)
+
+/**
+ * @brief 把操作数加载到t4寄存器
+ * @param op
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-07
+ */
+void backend::Generator::loadRegT4(const ir::Operand &op)
 {
-    // TODO; lab3todo24 loadVarOp2
+    // TODO; lab3todo24 loadRegT4
     if (op.type == ir::Type::Int)
     {
-        fout << "\tlw\tt4 ," << findOperand(op) << "(sp)\n";
+        fout << "\tlw\tt4, " << findOperand(op) << "(sp)\n";
     }
     else
         assert(0 && "to be continue");
 }
-void backend::Generator::storeVarDes(const ir::Operand &op)
+
+/**
+ * @brief 把t5寄存器值放入栈中
+ * @param op
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-07
+ */
+void backend::Generator::storeRegT5(const ir::Operand &op)
 {
-    // TODO; lab3todo25 storeVarDes
+    // TODO; lab3todo25 storeRegT5
     if (op.type == ir::Type::Int)
     {
-        fout << "\tsw\tt5 ," << findOperand(op) << "(sp)\n";
+        fout << "\tsw\tt5, " << findOperand(op) << "(sp)\n";
     }
     else
         assert(0 && "to be continue");
 }
+
 /**
  * @brief 生成.option nopic
  * @note 指定生成的代码与位置无关，可以在内存任意位置运行
