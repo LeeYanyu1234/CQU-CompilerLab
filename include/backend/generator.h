@@ -89,6 +89,7 @@ namespace backend
         void genInstUnuse(const ir::Instruction &);
         void genInstLss(const ir::Instruction &);
         void genInstGtr(const ir::Instruction &);
+        void genInstNeq(const ir::Instruction &);
 
         void loadRegT5(const ir::Operand &);
         void loadRegT4(const ir::Operand &);

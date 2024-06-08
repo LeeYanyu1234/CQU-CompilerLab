@@ -261,6 +261,8 @@ void backend::Generator::gen_instr(const ir::Instruction &inst, int idx)
         genInstLss(inst);
     else if (op == ir::Operator::gtr)
         genInstGtr(inst);
+    else if (op == ir::Operator::neq)
+        genInstNeq(inst);
     else
         assert(0 && "to be continue");
     fout.flush();
@@ -754,6 +756,23 @@ void backend::Generator::genInstGtr(const ir::Instruction &inst)
     // fout << "\tslt\tt5, t5, t4\n";
     // fout << "\txori\tt5, t5, 1\n";
     fout << "\tsgt\tt5, t5, t4\n";
+    storeRegT5(inst.des);
+}
+
+/**
+ * @brief 生成neq语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-08
+ */
+void backend::Generator::genInstNeq(const ir::Instruction &inst)
+{
+    // TODO; lab3todo41 genInstNeq
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    fout << "\txor\tt5, t5, t4\n";
+    fout << "\tseqz\tt5, t5\n";
+    fout << "\tseqz\tt5, t5\n";
     storeRegT5(inst.des);
 }
 
