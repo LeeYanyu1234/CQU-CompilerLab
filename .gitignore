@@ -324,3 +324,8 @@ test/output/basic/26_while_test1.exe
 test/output/basic/27_while_test2.exe
 test/output/basic/32_while_if_test2.exe
 test/output/basic/33_while_if_test3.exe
+test/output/function/28_while_test3.exe
+test/output/function/38_op_priority4.exe
+test/output/function/39_op_priority5.exe
+test/output/function/43_logi_assign.exe
+test/output/function/52_scope.exe

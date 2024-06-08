@@ -1,0 +1,34 @@
+void global()
+	0: return null
+end
+
+int main()
+	0: call null, global()
+	1: def t0, 4
+	2: mov a_Scp0, t0
+	3: def t1, 4
+	4: mov b_Scp0, t1
+	5: def c_Scp1, 473289
+	6: mov t2, a_Scp0
+	7: eq t2, t2, b_Scp0
+	8: mov t5, t2
+	9: eq t6, t5, 0
+	10: if t6 goto [pc, 5]
+	11: mov t3, a_Scp0
+	12: def t4, 3
+	13: neq t3, t3, t4
+	14: and t5, t5, t3
+	15: if t5 goto [pc, 2]
+	16: goto [pc, 4]
+	17: def t7, 1
+	18: mov c_Scp1, t7
+	19: goto [pc, 3]
+	20: def t8, 0
+	21: mov c_Scp1, t8
+	22: __unuse__ null, null, null
+	23: return c_Scp1
+end
+
+GVT:
+	a_Scp0 int 0
+	b_Scp0 int 0

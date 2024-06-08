@@ -263,6 +263,8 @@ void backend::Generator::gen_instr(const ir::Instruction &inst, int idx)
         genInstGtr(inst);
     else if (op == ir::Operator::neq)
         genInstNeq(inst);
+    else if (op == ir::Operator::leq)
+        genInstLeq(inst);
     else
         assert(0 && "to be continue");
     fout.flush();
@@ -461,8 +463,8 @@ void backend::Generator::genInstMov(const ir::Instruction &inst)
     {
         if (isGlobal(inst.op1.name))
         {
-            fout << "\tlui\tt3, %hi(" << inst.des.name << ")\n";
-            fout << "\taddi\tt3, t3, %lo(" << inst.des.name << ")\n"; // 全局变量地址在t3寄存器中
+            fout << "\tlui\tt3, %hi(" << inst.op1.name << ")\n";
+            fout << "\taddi\tt3, t3, %lo(" << inst.op1.name << ")\n"; // 全局变量地址在t3寄存器中
             fout << "\tlw\tt6, 0(t3)" << "\n";
         }
         else
@@ -525,11 +527,8 @@ void backend::Generator::genInstAlloc(const ir::Instruction &inst)
 void backend::Generator::genInstStore(const ir::Instruction &inst)
 {
     // TODO; lab3todo27 genInstStore
-    if (inst.des.type == ir::Type::Int && inst.op2.type == ir::Type::IntLiteral)
-    {
-        loadRegT5(inst.des);
-        fout << "\tsw\tt5, " << findOperand(inst.op1) + stoi(inst.op2.name) * 4 << "(sp)\n";
-    }
+    loadRegT5(inst.des);
+    fout << "\tsw\tt5, " << findOperand(inst.op1) + stoi(inst.op2.name) * 4 << "(sp)\n";
 }
 
 /**
@@ -772,6 +771,23 @@ void backend::Generator::genInstNeq(const ir::Instruction &inst)
     loadRegT4(inst.op2);
     fout << "\txor\tt5, t5, t4\n";
     fout << "\tseqz\tt5, t5\n";
+    fout << "\tseqz\tt5, t5\n";
+    storeRegT5(inst.des);
+}
+
+/**
+ * @brief 生成leq语句对应的汇编语句
+ * @param inst
+ * @note 小于等于=大于
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-08
+ */
+void backend::Generator::genInstLeq(const ir::Instruction &inst)
+{
+    // TODO; lab3todo42 genInstLeq
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    fout << "\tsgt\tt5, t5, t4\n";
     fout << "\tseqz\tt5, t5\n";
     storeRegT5(inst.des);
 }
