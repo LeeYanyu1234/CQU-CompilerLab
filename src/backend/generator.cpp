@@ -16,41 +16,41 @@
 
 backend::Generator::Generator(ir::Program &p, std::ofstream &f) : program(p), fout(f) {}
 
-rv::rvREG backend::Generator::getRd(ir::Operand)
-{
-    TODO;
-    return rv::rvREG();
-}
+// rv::rvREG backend::Generator::getRd(ir::Operand)
+// {
+//     TODO;
+//     return rv::rvREG();
+// }
 
-rv::rvFREG backend::Generator::fgetRd(ir::Operand)
-{
-    TODO;
-    return rv::rvFREG();
-}
+// rv::rvFREG backend::Generator::fgetRd(ir::Operand)
+// {
+//     TODO;
+//     return rv::rvFREG();
+// }
 
-rv::rvREG backend::Generator::getRs1(ir::Operand)
-{
-    TODO;
-    return rv::rvREG();
-}
+// rv::rvREG backend::Generator::getRs1(ir::Operand)
+// {
+//     TODO;
+//     return rv::rvREG();
+// }
 
-rv::rvREG backend::Generator::getRs2(ir::Operand)
-{
-    TODO;
-    return rv::rvREG();
-}
+// rv::rvREG backend::Generator::getRs2(ir::Operand)
+// {
+//     TODO;
+//     return rv::rvREG();
+// }
 
-rv::rvFREG backend::Generator::fgetRs1(ir::Operand)
-{
-    TODO;
-    return rv::rvFREG();
-}
+// rv::rvFREG backend::Generator::fgetRs1(ir::Operand)
+// {
+//     TODO;
+//     return rv::rvFREG();
+// }
 
-rv::rvFREG backend::Generator::fgetRs2(ir::Operand)
-{
-    TODO;
-    return rv::rvFREG();
-}
+// rv::rvFREG backend::Generator::fgetRs2(ir::Operand)
+// {
+//     TODO;
+//     return rv::rvFREG();
+// }
 
 /**
  * @brief 在映射表中查找局部变量
@@ -84,6 +84,7 @@ void backend::Generator::gen()
     initGlobaVar(program.functions.front());
 
     setText();
+
     //* 跳过global函数，因为global已经单独处理
     for (int i = 1; i < program.functions.size(); i++)
     {
@@ -238,7 +239,7 @@ void backend::Generator::gen_instr(const ir::Instruction &inst)
 }
 
 /**
- * @brief 计算函数的栈大小，保存寄存器
+ * @brief 计算函数的栈大小，保存寄存器，加载参数
  * @param func
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-06-06
@@ -247,9 +248,14 @@ void backend::Generator::saveReg(const ir::Function &func)
 {
     // TODO; lab3todo9 saveReg
     stackVarMap.clear();
-    stackSize = 4;
+    stackSize = 4; // 需要为保留ra寄存器分配一个栈空间
 
-    for (auto inst : func.InstVec)
+    for (auto fParam : func.ParameterList) // 扫描函数形参表，为每一个形参分配一个栈空间
+    {
+        addOperand(fParam);
+    }
+
+    for (auto inst : func.InstVec) // 扫描指令中出现的变量，为每一个局部变量分配一个栈空间
     {
         if (inst->des.type == ir::Type::Int)
         {
@@ -266,6 +272,7 @@ void backend::Generator::saveReg(const ir::Function &func)
             if (!isGlobal(inst->op1.name))
                 addOperand(inst->op1);
         }
+
         if (inst->op2.type == ir::Type::Int)
         {
             if (!isGlobal(inst->op2.name))
@@ -274,6 +281,19 @@ void backend::Generator::saveReg(const ir::Function &func)
     }
     fout << "\taddi\tsp, sp, -" << stackSize << "\n";
     fout << "\tsw\tra, 0(sp)\n";
+
+    // 把参数加载到栈
+    for (int i = 0; i < func.ParameterList.size(); i++)
+    {
+        if (i <= 7)
+        {
+            fout << "\tsw\ta" << i << ", " << findOperand(func.ParameterList[i].name) << "(sp)\n";
+        }
+        else
+        {
+            assert(0 && "to be continue");
+        }
+    }
 }
 
 /**
@@ -332,7 +352,22 @@ void backend::Generator::genInstCall(const ir::Instruction &inst)
     }
     else
     {
-        assert(0 && "to be continue");
+        const auto *instPtr = &inst;
+        auto callInstPtr = dynamic_cast<const ir::CallInst *>(instPtr); // 获取函数指针
+        if (callInstPtr->argumentList.size() > 8)                       // 参数大于8个，已经超过参数寄存器上限，需要通过栈传参
+            assert(0 && "to be continue");
+        for (int i = 0; i < callInstPtr->argumentList.size(); i++)
+        {
+            if (i <= 7)
+            {
+                loadRegT5(callInstPtr->argumentList[i]);
+                fout << "\tmv\ta" << i << ", t5\n";
+            }
+            else
+                assert(0 && "to be continue");
+        }
+        fout << "\tcall\t" << inst.op1.name << "\n";
+        fout << "\tsw\ta0, " << findOperand(inst.des.name) << "(sp)\n";
     }
 }
 

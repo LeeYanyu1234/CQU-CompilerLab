@@ -20,7 +20,7 @@ namespace rv
         X7,  // t2         temporary register 2                 Caller
         X8,  // s0/fp      saved register 0 / frame pointer     Callee
         X9,  // s1         saved register 1                     Callee
-        X10, // a0         return value / function argument 0   Caller
+        X10, // a0         return value / function argument 0   Caller 参数1
         X11, // a1         return value / function argument 1   Caller
         X12, // a2         function argument 2                  Caller
         X13, // a3         function argument 3                  Caller

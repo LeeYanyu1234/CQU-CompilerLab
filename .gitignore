@@ -289,3 +289,6 @@ test/output/function/78_side_effect.s
 test/output/function/79_var_name.s
 test/output/function/89_many_globals.s
 test/output/function/95_float.s
+test/output/basic/09_func_defn.exe
+test/output/basic/10_var_defn_func.exe
+test/output/basic/31_while_if_test1.exe
