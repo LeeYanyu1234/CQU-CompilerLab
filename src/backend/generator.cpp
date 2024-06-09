@@ -409,6 +409,11 @@ void backend::Generator::genInstReturn(const ir::Instruction &inst)
             fout << "\tjr\tra\n";
         }
     }
+    else if (inst.op1.type == ir::Type::null)
+    {
+        recoverReg();
+        fout << "\tjr\tra\n";
+    }
     else
     {
         assert(0 && "to be continue");
@@ -548,7 +553,13 @@ void backend::Generator::genInstStore(const ir::Instruction &inst, int argCnt)
     // TODO; lab3todo27 genInstStore
     if (isGlobal(inst.op1.name)) // 如果是全局变量数组
     {
-        assert(0 && "to be continue");
+        loadRegT5(inst.des);
+        fout << "\tlui\tt3, %hi(" << inst.op1.name << ")\n";
+        fout << "\taddi\tt3, t3, %lo(" << inst.op1.name << ")\n"; // 全局数组的基地址在t3寄存器中
+        loadRegT4(inst.op2);                                      // 加载偏移量到t4寄存器
+        fout << "\tslli\tt4, t4, 2\n";                            // 偏移量*4
+        fout << "\tadd\tt3, t3, t4\n";                            // 计算地址
+        fout << "\tsw\tt5, 0(t3)\n";
     }
     else if (findOperand(inst.op1) >= 4 + argCnt * 4) // 如果是局部变量数组
     {

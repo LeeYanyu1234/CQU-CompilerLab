@@ -335,3 +335,6 @@ test/output/function/51_short_circuit3.exe
 test/score.py
 test/output/function/55_sort_test1.exe
 test/output/function/66_exgcd.exe
+test/output/function/62_percolation.exe
+test/output/function/70_dijkstra.exe
+test/output/function/73_int_io.exe
