@@ -17,7 +17,7 @@ namespace rv
         X4,  // tp         thread pointer                       n/a
         X5,  // t0         temporary register 0                 Caller
         X6,  // t1         temporary register 1                 Caller
-        X7,  // t2         temporary register 2                 Caller
+        X7,  // t2         temporary register 2                 Caller 栈传参指针
         X8,  // s0/fp      saved register 0 / frame pointer     Callee
         X9,  // s1         saved register 1                     Callee
         X10, // a0         return value / function argument 0   Caller 参数1

@@ -339,3 +339,4 @@ test/output/function/62_percolation.exe
 test/output/function/70_dijkstra.exe
 test/output/function/73_int_io.exe
 test/output/function/64_calculator.exe
+test/output/function/89_many_globals.exe

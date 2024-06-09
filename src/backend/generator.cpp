@@ -331,7 +331,12 @@ int backend::Generator::saveReg(const ir::Function &func)
         }
         else
         {
-            assert(0 && "to be continue");
+            if (i == 8)
+            {
+                fout << "\taddi\tt2, sp, " << stackSize << "\n";
+            }
+            fout << "\tlw\tt5, " << (i - 8) * 4 << "(t2)\n";
+            fout << "\tsw\tt5, " << findOperand(func.ParameterList[i].name) << "(sp)\n";
         }
     }
 
@@ -436,10 +441,9 @@ void backend::Generator::genInstCall(const ir::Instruction &inst)
     }
     else
     {
+        int extendSize = 0;
         const auto *instPtr = &inst;
         auto callInstPtr = dynamic_cast<const ir::CallInst *>(instPtr); // 获取函数指针
-        if (callInstPtr->argumentList.size() > 8)                       // 参数大于8个，已经超过参数寄存器上限，需要通过栈传参
-            assert(0 && "to be continue");
         for (int i = 0; i < callInstPtr->argumentList.size(); i++)
         {
             if (i <= 7)
@@ -447,10 +451,20 @@ void backend::Generator::genInstCall(const ir::Instruction &inst)
                 loadRegT5(callInstPtr->argumentList[i]);
                 fout << "\tmv\ta" << i << ", t5\n";
             }
-            else
-                assert(0 && "to be continue");
+            else // 参数大于8个，已经超过参数寄存器上限，需要通过栈传参
+            {
+                if (i == 8) // 分配栈空间
+                {
+                    extendSize = (callInstPtr->argumentList.size() - 8) * 4;
+                    fout << "\taddi\tsp, sp, -" << extendSize << "\n";
+                }
+                loadRegT5(callInstPtr->argumentList[i]);
+                fout << "\tsw\tt5, " << (i - 8) * 4 << "(sp)\n";
+            }
         }
         fout << "\tcall\t" << inst.op1.name << "\n";
+        if (extendSize > 0)
+            fout << "\taddi\tsp, sp, " << extendSize << "\n";
         if (inst.des.name != "null") // 返回值不为空时才接收返回值
             fout << "\tsw\ta0, " << findOperand(inst.des.name) << "(sp)\n";
     }
