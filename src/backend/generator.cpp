@@ -292,7 +292,6 @@ void backend::Generator::gen_instr(const ir::Instruction &inst, int idx, int arg
         genInstCvt_f2i(inst);
     else
         assert(0 && "to be continue");
-    fout.flush();
 }
 
 /**
@@ -1051,7 +1050,6 @@ void backend::Generator::genInstFmul(const ir::Instruction &inst)
     loadRegT4(inst.op2);
     fout << "\tfmul.s\t ft5, ft5, ft4\n";
     storeRegT5(inst.des);
-    fout.flush();
 }
 
 /**
@@ -1064,9 +1062,12 @@ void backend::Generator::genInstCvt_i2f(const ir::Instruction &inst)
 {
     // TODO; lab3todo47 genInstCvt_i2f
     loadRegT5(inst.op1);
+    fout << "\tcsrr\tt1, frm\n";
+    fout << "\tli\tt0, 1\n";
+    fout << "\tcsrw\tfrm, t0\n";
     fout << "\tfcvt.s.w\t ft5, t5\n";
+    fout << "\tcsrw\tfrm, t1\n";
     storeRegT5(inst.des);
-    fout.flush();
 }
 
 /**
@@ -1082,7 +1083,6 @@ void backend::Generator::genInstFadd(const ir::Instruction &inst)
     loadRegT4(inst.op2);
     fout << "\tfadd.s\t ft5, ft5, ft4\n";
     storeRegT5(inst.des);
-    fout.flush();
 }
 
 /**
@@ -1098,7 +1098,6 @@ void backend::Generator::genInstFdiv(const ir::Instruction &inst)
     loadRegT4(inst.op2);
     fout << "\tfdiv.s\t ft5, ft5, ft4\n";
     storeRegT5(inst.des);
-    fout.flush();
 }
 
 /**
@@ -1135,7 +1134,6 @@ void backend::Generator::genInstFlss(const ir::Instruction &inst)
     fout << "\tflt.s\tt5, ft5, ft4\n"; // flt.s的目标寄存器需要是整数寄存器
     fout << "\tfcvt.s.w\tft5, t5\n";
     storeRegT5(inst.des);
-    fout.flush();
 }
 
 /**
@@ -1153,7 +1151,6 @@ void backend::Generator::genInstFneq(const ir::Instruction &inst)
     fout << "\tseqz\tt5, t5\n";
     fout << "\tfcvt.s.w\tft5, t5\n";
     storeRegT5(inst.des);
-    fout.flush();
 }
 
 /**
@@ -1169,7 +1166,6 @@ void backend::Generator::genInstFsub(const ir::Instruction &inst)
     loadRegT4(inst.op2);
     fout << "\tfsub.s\t ft5, ft5, ft4\n";
     storeRegT5(inst.des);
-    fout.flush();
 }
 
 /**
@@ -1182,9 +1178,12 @@ void backend::Generator::genInstCvt_f2i(const ir::Instruction &inst)
 {
     // TODO; lab3todo54 genInstCvt_f2i
     loadRegT5(inst.op1);
+    fout << "\tcsrr\tt1, frm\n";
+    fout << "\tli\tt0, 1\n";
+    fout << "\tcsrw\tfrm, t0\n";
     fout << "\tfcvt.w.s\t t5, ft5\n";
+    fout << "\tcsrw\tfrm, t1\n";
     storeRegT5(inst.des);
-    fout.flush();
 }
 
 /**
