@@ -267,9 +267,10 @@ void backend::Generator::gen_instr(const ir::Instruction &inst, int idx, int arg
     else if (op == ir::Operator::geq)
         genInstGeq(inst);
     else if (op == ir::Operator::getptr)
-        genInstGetptr(inst);
+        genInstGetptr(inst, argCnt);
     else
         assert(0 && "to be continue");
+    fout.flush();
 }
 
 /**
@@ -887,10 +888,10 @@ void backend::Generator::genInstGeq(const ir::Instruction &inst)
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-06-08
  */
-void backend::Generator::genInstGetptr(const ir::Instruction &inst)
+void backend::Generator::genInstGetptr(const ir::Instruction &inst, int argCnt)
 {
     // TODO; lab3todo44 genInstGetptr
-    if (isGlobal(inst.op1.name))
+    if (isGlobal(inst.op1.name)) // 全局变量数组
     {
         fout << "\tlui\tt3, %hi(" << inst.op1.name << ")\n";
         fout << "\taddi\tt3, t3, %lo(" << inst.op1.name << ")\n"; // 全局数组的基地址在t3寄存器中
@@ -899,12 +900,20 @@ void backend::Generator::genInstGetptr(const ir::Instruction &inst)
         fout << "\tadd\tt5, t3, t4\n";                            // 计算地址
         storeRegT5(inst.des);
     }
-    else
+    else if (findOperand(inst.op1) >= 4 + argCnt * 4) // 如果是局部变量数组
     {
         loadRegT4(inst.op2);
         fout << "\tslli\tt4, t4, 2\n";
         fout << "\tadd\tt5, sp, t4\n";
         fout << "\taddi\tt5, t5, " << findOperand(inst.op1) << "\n";
+        storeRegT5(inst.des);
+    }
+    else // 如果是参数传递过来的变量
+    {
+        loadRegT4(inst.op2);                                       // 偏移量在t4
+        fout << "\tslli\tt4, t4, 2\n";                             // 偏移量*4
+        fout << "\tlw\tt5, " << findOperand(inst.op1) << "(sp)\n"; // 获取数组地址
+        fout << "\tadd\tt5, t5, t4\n";                             // 计算指针
         storeRegT5(inst.des);
     }
 }
