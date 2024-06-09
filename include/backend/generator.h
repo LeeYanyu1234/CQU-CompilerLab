@@ -62,10 +62,10 @@ namespace backend
         void gen();
         void initGlobaVar(const ir::Function &);
         void gen_func(const ir::Function &);
-        void gen_instr(const ir::Instruction &, int idx);
+        void gen_instr(const ir::Instruction &, int idx, int argCnt);
 
         // 辅助函数生成
-        void saveReg(const ir::Function &);
+        int saveReg(const ir::Function &);
         void genJumpLabel(const ir::Function &);
         void recoverReg();
 
@@ -76,14 +76,14 @@ namespace backend
         void genInstMov(const ir::Instruction &);
         void genInstAdd(const ir::Instruction &);
         void genInstAlloc(const ir::Instruction &);
-        void genInstStore(const ir::Instruction &);
+        void genInstStore(const ir::Instruction &, int);
         void genInstMul(const ir::Instruction &);
-        void genInstLoad(const ir::Instruction &);
+        void genInstLoad(const ir::Instruction &, int);
         void genInstSub(const ir::Instruction &);
         void genInstDiv(const ir::Instruction &);
         void genInstMod(const ir::Instruction &);
         void genInstEq(const ir::Instruction &);
-        void genInstGoto(const ir::Instruction &, int idx);
+        void genInstGoto(const ir::Instruction &, int);
         void genInstOr(const ir::Instruction &);
         void genInstAnd(const ir::Instruction &);
         void genInstUnuse(const ir::Instruction &);
@@ -92,6 +92,7 @@ namespace backend
         void genInstNeq(const ir::Instruction &);
         void genInstLeq(const ir::Instruction &);
         void genInstGeq(const ir::Instruction &);
+        void genInstGetptr(const ir::Instruction &);
 
         void loadRegT5(const ir::Operand &);
         void loadRegT4(const ir::Operand &);

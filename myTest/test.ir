@@ -1,107 +1,193 @@
 void global()
-	0: def t0, 0
-	1: mov g_Scp0, t0
-	2: return null
+	0: return null
 end
 
-int func(int n_Scp1)
-	0: mov t1, g_Scp0
-	1: add t1, t1, n_Scp1
-	2: mov g_Scp0, t1
-	3: call null, putint(g_Scp0)
-	4: return g_Scp0
+int bubblesort(int* arr_Scp1)
+	0: def i_Scp1, 473289
+	1: def j_Scp1, 473289
+	2: def t0, 0
+	3: mov i_Scp1, t0
+	4: mov t1, i_Scp1
+	5: mov t2, n_Scp0
+	6: def t3, 1
+	7: sub t2, t2, t3
+	8: lss t1, t1, t2
+	9: if t1 goto [pc, 2]
+	10: goto [pc, 68]
+	11: def t4, 0
+	12: mov j_Scp1, t4
+	13: mov t5, j_Scp1
+	14: mov t6, n_Scp0
+	15: sub t6, t6, i_Scp1
+	16: def t7, 1
+	17: sub t6, t6, t7
+	18: lss t5, t5, t6
+	19: if t5 goto [pc, 2]
+	20: goto [pc, 52]
+	21: def t8, 0
+	22: def t9, 1
+	23: mul t9, t9, j_Scp1
+	24: add t8, t8, t9
+	25: load t10, arr_Scp1, t8
+	26: mov t11, t10
+	27: def t12, 0
+	28: def t13, 1
+	29: mov t14, j_Scp1
+	30: def t15, 1
+	31: add t14, t14, t15
+	32: mul t13, t13, t14
+	33: add t12, t12, t13
+	34: load t16, arr_Scp1, t12
+	35: gtr t11, t11, t16
+	36: if t11 goto [pc, 2]
+	37: goto [pc, 29]
+	38: def tmp_Scp4, 473289
+	39: def t17, 0
+	40: def t18, 1
+	41: mov t19, j_Scp1
+	42: def t20, 1
+	43: add t19, t19, t20
+	44: mul t18, t18, t19
+	45: add t17, t17, t18
+	46: load t21, arr_Scp1, t17
+	47: mov tmp_Scp4, t21
+	48: def t22, 0
+	49: def t23, 1
+	50: mov t24, j_Scp1
+	51: def t25, 1
+	52: add t24, t24, t25
+	53: mul t23, t23, t24
+	54: add t22, t22, t23
+	55: def t26, 0
+	56: def t27, 1
+	57: mul t27, t27, j_Scp1
+	58: add t26, t26, t27
+	59: load t28, arr_Scp1, t26
+	60: store t28, arr_Scp1, t22
+	61: def t29, 0
+	62: def t30, 1
+	63: mul t30, t30, j_Scp1
+	64: add t29, t29, t30
+	65: store tmp_Scp4, arr_Scp1, t29
+	66: __unuse__ null, null, null
+	67: mov t31, j_Scp1
+	68: def t32, 1
+	69: add t31, t31, t32
+	70: mov j_Scp1, t31
+	71: goto [pc, -58]
+	72: __unuse__ null, null, null
+	73: mov t33, i_Scp1
+	74: def t34, 1
+	75: add t33, t33, t34
+	76: mov i_Scp1, t33
+	77: goto [pc, -73]
+	78: __unuse__ null, null, null
+	79: return 0
 end
 
 int main()
 	0: call null, global()
-	1: def i_Scp1, 473289
-	2: call t2, getint()
-	3: mov i_Scp1, t2
-	4: mov t3, i_Scp1
-	5: def t4, 10
-	6: gtr t3, t3, t4
-	7: mov t6, t3
-	8: eq t7, t6, 0
-	9: if t7 goto [pc, 3]
-	10: call t5, func(i_Scp1)
-	11: and t6, t6, t5
-	12: if t6 goto [pc, 2]
-	13: goto [pc, 4]
-	14: def t8, 1
-	15: mov i_Scp1, t8
-	16: goto [pc, 3]
-	17: def t9, 0
-	18: mov i_Scp1, t9
-	19: __unuse__ null, null, null
-	20: call t10, getint()
-	21: mov i_Scp1, t10
-	22: mov t11, i_Scp1
-	23: def t12, 11
-	24: gtr t11, t11, t12
-	25: mov t14, t11
-	26: eq t15, t14, 0
-	27: if t15 goto [pc, 3]
-	28: call t13, func(i_Scp1)
-	29: and t14, t14, t13
-	30: if t14 goto [pc, 2]
-	31: goto [pc, 4]
-	32: def t16, 1
-	33: mov i_Scp1, t16
-	34: goto [pc, 3]
-	35: def t17, 0
-	36: mov i_Scp1, t17
-	37: __unuse__ null, null, null
-	38: call t18, getint()
-	39: mov i_Scp1, t18
-	40: mov t19, i_Scp1
-	41: def t20, 99
-	42: leq t19, t19, t20
-	43: mov t22, t19
-	44: if t22 goto [pc, 3]
-	45: call t21, func(i_Scp1)
-	46: or t22, t22, t21
-	47: if t22 goto [pc, 2]
-	48: goto [pc, 4]
-	49: def t23, 1
-	50: mov i_Scp1, t23
-	51: goto [pc, 3]
-	52: def t24, 0
-	53: mov i_Scp1, t24
-	54: __unuse__ null, null, null
-	55: call t25, getint()
-	56: mov i_Scp1, t25
-	57: mov t26, i_Scp1
-	58: def t27, 100
-	59: leq t26, t26, t27
-	60: mov t29, t26
-	61: if t29 goto [pc, 3]
-	62: call t28, func(i_Scp1)
-	63: or t29, t29, t28
-	64: if t29 goto [pc, 2]
-	65: goto [pc, 4]
-	66: def t30, 1
-	67: mov i_Scp1, t30
-	68: goto [pc, 3]
-	69: def t31, 0
-	70: mov i_Scp1, t31
-	71: __unuse__ null, null, null
-	72: call t32, func(99)
-	73: eq t33, 0, t32
-	74: mov t35, t33
-	75: eq t36, t35, 0
-	76: if t36 goto [pc, 3]
-	77: call t34, func(100)
-	78: and t35, t35, t34
-	79: if t35 goto [pc, 2]
-	80: goto [pc, 4]
-	81: def t37, 1
-	82: mov i_Scp1, t37
-	83: goto [pc, 3]
-	84: def t38, 0
-	85: mov i_Scp1, t38
-	86: __unuse__ null, null, null
-	87: return 0
+	1: def t35, 10
+	2: mov n_Scp0, t35
+	3: alloc a_Scp1, 10
+	4: def t36, 0
+	5: def t37, 1
+	6: def t38, 0
+	7: mul t37, t37, t38
+	8: add t36, t36, t37
+	9: def t39, 4
+	10: store t39, a_Scp1, t36
+	11: def t40, 0
+	12: def t41, 1
+	13: def t42, 1
+	14: mul t41, t41, t42
+	15: add t40, t40, t41
+	16: def t43, 3
+	17: store t43, a_Scp1, t40
+	18: def t44, 0
+	19: def t45, 1
+	20: def t46, 2
+	21: mul t45, t45, t46
+	22: add t44, t44, t45
+	23: def t47, 9
+	24: store t47, a_Scp1, t44
+	25: def t48, 0
+	26: def t49, 1
+	27: def t50, 3
+	28: mul t49, t49, t50
+	29: add t48, t48, t49
+	30: def t51, 2
+	31: store t51, a_Scp1, t48
+	32: def t52, 0
+	33: def t53, 1
+	34: def t54, 4
+	35: mul t53, t53, t54
+	36: add t52, t52, t53
+	37: def t55, 0
+	38: store t55, a_Scp1, t52
+	39: def t56, 0
+	40: def t57, 1
+	41: def t58, 5
+	42: mul t57, t57, t58
+	43: add t56, t56, t57
+	44: def t59, 1
+	45: store t59, a_Scp1, t56
+	46: def t60, 0
+	47: def t61, 1
+	48: def t62, 6
+	49: mul t61, t61, t62
+	50: add t60, t60, t61
+	51: def t63, 6
+	52: store t63, a_Scp1, t60
+	53: def t64, 0
+	54: def t65, 1
+	55: def t66, 7
+	56: mul t65, t65, t66
+	57: add t64, t64, t65
+	58: def t67, 5
+	59: store t67, a_Scp1, t64
+	60: def t68, 0
+	61: def t69, 1
+	62: def t70, 8
+	63: mul t69, t69, t70
+	64: add t68, t68, t69
+	65: def t71, 7
+	66: store t71, a_Scp1, t68
+	67: def t72, 0
+	68: def t73, 1
+	69: def t74, 9
+	70: mul t73, t73, t74
+	71: add t72, t72, t73
+	72: def t75, 8
+	73: store t75, a_Scp1, t72
+	74: def i_Scp1, 473289
+	75: def t76, 0
+	76: getptr t77, a_Scp1, t76
+	77: call t78, bubblesort(t77)
+	78: mov i_Scp1, t78
+	79: mov t79, i_Scp1
+	80: lss t79, t79, n_Scp0
+	81: if t79 goto [pc, 2]
+	82: goto [pc, 17]
+	83: def tmp_Scp2, 473289
+	84: def t80, 0
+	85: def t81, 1
+	86: mul t81, t81, i_Scp1
+	87: add t80, t80, t81
+	88: load t82, a_Scp1, t80
+	89: mov tmp_Scp2, t82
+	90: call null, putint(tmp_Scp2)
+	91: def t83, 10
+	92: mov tmp_Scp2, t83
+	93: call null, putch(tmp_Scp2)
+	94: mov t84, i_Scp1
+	95: def t85, 1
+	96: add t84, t84, t85
+	97: mov i_Scp1, t84
+	98: goto [pc, -19]
+	99: __unuse__ null, null, null
+	100: return 0
 end
 
 GVT:
-	g_Scp0 int 0
+	n_Scp0 int 0

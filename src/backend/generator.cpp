@@ -180,7 +180,6 @@ void backend::Generator::initGlobaVar(const ir::Function &func)
             }
         }
     }
-    fout.flush();
 }
 
 /**
@@ -196,17 +195,17 @@ void backend::Generator::gen_func(const ir::Function &func)
     setTypeFunc(func.name);
     setLabel(func.name);
 
-    saveReg(func);
+    int argCnt = saveReg(func); // 函数的参数个数
     genJumpLabel(func);
 
-    int idx = 0;
+    int idx = 0; // 当前指令在函数中的索引，用于寻找标签
     for (const ir::Instruction *inst : func.InstVec)
     {
         if (instLabelMap.find(idx) != instLabelMap.end())
         {
             setLabel(instLabelMap[idx]);
         }
-        gen_instr(*inst, idx++);
+        gen_instr(*inst, idx++, argCnt);
     }
 
     fout << "\t.size\t" << func.name << ", .-" << func.name << "\n";
@@ -219,7 +218,7 @@ void backend::Generator::gen_func(const ir::Function &func)
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-06-08
  */
-void backend::Generator::gen_instr(const ir::Instruction &inst, int idx)
+void backend::Generator::gen_instr(const ir::Instruction &inst, int idx, int argCnt)
 {
     // TODO; lab3todo11 gen_instr
     ir::Operator op = inst.op;
@@ -236,11 +235,11 @@ void backend::Generator::gen_instr(const ir::Instruction &inst, int idx)
     else if (op == ir::Operator::alloc)
         genInstAlloc(inst);
     else if (op == ir::Operator::store)
-        genInstStore(inst);
+        genInstStore(inst, argCnt);
     else if (op == ir::Operator::mul)
         genInstMul(inst);
     else if (op == ir::Operator::load)
-        genInstLoad(inst);
+        genInstLoad(inst, argCnt);
     else if (op == ir::Operator::sub)
         genInstSub(inst);
     else if (op == ir::Operator::div)
@@ -267,18 +266,20 @@ void backend::Generator::gen_instr(const ir::Instruction &inst, int idx)
         genInstLeq(inst);
     else if (op == ir::Operator::geq)
         genInstGeq(inst);
+    else if (op == ir::Operator::getptr)
+        genInstGetptr(inst);
     else
         assert(0 && "to be continue");
-    fout.flush();
 }
 
 /**
  * @brief 计算函数的栈大小，保存寄存器，加载参数
  * @param func
+ * @return int 函数的参数个数
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-06-06
  */
-void backend::Generator::saveReg(const ir::Function &func)
+int backend::Generator::saveReg(const ir::Function &func)
 {
     // TODO; lab3todo9 saveReg
     stackVarMap.clear();
@@ -299,6 +300,10 @@ void backend::Generator::saveReg(const ir::Function &func)
         else if (inst->des.type == ir::Type::IntPtr && inst->op == ir::Operator::alloc && inst->op1.type == ir::Type::IntLiteral)
         {
             addOperand(inst->des, stoi(inst->op1.name) * 4);
+        }
+        else if (inst->des.type == ir::Type::IntPtr && inst->op == ir::Operator::getptr)
+        {
+            addOperand(inst->des);
         }
 
         if (inst->op1.type == ir::Type::Int)
@@ -328,6 +333,8 @@ void backend::Generator::saveReg(const ir::Function &func)
             assert(0 && "to be continue");
         }
     }
+
+    return func.ParameterList.size();
 }
 
 /**
@@ -484,7 +491,7 @@ void backend::Generator::genInstMov(const ir::Instruction &inst)
         {
             fout << "\tlw\tt6, " << findOperand(inst.op1) << "(sp)" << "\n";
         }
-        fout.flush();
+
         if (isGlobal(inst.des.name))
         {
             fout << "\tlui\tt3, %hi(" << inst.des.name << ")\n";
@@ -500,7 +507,6 @@ void backend::Generator::genInstMov(const ir::Instruction &inst)
     {
         assert(0 && "to be continue");
     }
-    fout.flush();
 }
 
 /**
@@ -537,11 +543,42 @@ void backend::Generator::genInstAlloc(const ir::Instruction &inst)
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-06-07
  */
-void backend::Generator::genInstStore(const ir::Instruction &inst)
+void backend::Generator::genInstStore(const ir::Instruction &inst, int argCnt)
 {
     // TODO; lab3todo27 genInstStore
-    loadRegT5(inst.des);
-    fout << "\tsw\tt5, " << findOperand(inst.op1) + stoi(inst.op2.name) * 4 << "(sp)\n";
+    if (isGlobal(inst.op1.name)) // 如果是全局变量数组
+    {
+        assert(0 && "to be continue");
+    }
+    else if (findOperand(inst.op1) >= 4 + argCnt * 4) // 如果是局部变量数组
+    {
+        //! 现在的问题是不能区分参数传递过来的数组和本地自定义的数组
+        //! 需要增加一个参数来判断这个数组所在的区域是不是参数
+        if (inst.op2.type == ir::Type::Int)
+        {
+            loadRegT5(inst.des);
+            loadRegT4(inst.op2);
+            fout << "\tslli\tt4, t4, 2\n";
+            fout << "\tadd\tt3, sp, t4\n";
+            fout << "\tsw\tt5, " << findOperand(inst.op1) << "(t3)\n";
+        }
+        else if (inst.op2.type == ir::Type::IntLiteral)
+        {
+            loadRegT5(inst.des);
+            fout << "\tsw\tt5, " << findOperand(inst.op1) + stoi(inst.op2.name) * 4 << "(sp)\n";
+        }
+        else
+            assert(0 && "to be continue");
+    }
+    else // 参数传递过来的数组指针
+    {
+        loadRegT5(inst.des);                                       // 需要存入的值在t5
+        loadRegT4(inst.op2);                                       // 偏移量在t4
+        fout << "\tslli\tt4, t4, 2\n";                             // 偏移量*4
+        fout << "\tlw\tt3, " << findOperand(inst.op1) << "(sp)\n"; // 加载基地址到t3
+        fout << "\tadd\tt3, t3, t4\n";
+        fout << "\tsw\tt5, 0(t3)\n";
+    }
 }
 
 /**
@@ -565,7 +602,7 @@ void backend::Generator::genInstMul(const ir::Instruction &inst)
  * @author LeeYanyu1234 (343820386@qq.com)
  * @date 2024-06-07
  */
-void backend::Generator::genInstLoad(const ir::Instruction &inst)
+void backend::Generator::genInstLoad(const ir::Instruction &inst, int argCnt)
 {
     // TODO; lab3todo29 genInstLoad
     if (isGlobal(inst.op1.name)) // 如果是全局变量数组
@@ -578,12 +615,23 @@ void backend::Generator::genInstLoad(const ir::Instruction &inst)
         fout << "\tlw\tt5, 0(t3)\n";
         storeRegT5(inst.des);
     }
-    else // 如果是局部变量数组
+    else if (findOperand(inst.op1) >= 4 + argCnt * 4) // 如果是局部变量数组
     {
+        //! 现在的问题是不能区分参数传递过来的数组和本地自定义的数组
+        //! 需要增加一个参数来判断这个数组所在的区域是不是参数
         loadRegT4(inst.op2);
         fout << "\tslli\tt4, t4, 2\n";
         fout << "\tadd\tt3, sp, t4\n";
         fout << "\tlw\tt5, " << findOperand(inst.op1) << "(t3)\n";
+        storeRegT5(inst.des);
+    }
+    else // 参数传递过来的数组指针
+    {
+        loadRegT4(inst.op2);
+        fout << "\tslli\tt4, t4, 2\n";
+        fout << "\tlw\tt3, " << findOperand(inst.op1) << "(sp)\n";
+        fout << "\tadd\tt3, t4, t3\n";
+        fout << "\tlw\tt5, 0(t3)\n";
         storeRegT5(inst.des);
     }
 }
@@ -823,6 +871,22 @@ void backend::Generator::genInstGeq(const ir::Instruction &inst)
 }
 
 /**
+ * @brief 生成getptr语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-08
+ */
+void backend::Generator::genInstGetptr(const ir::Instruction &inst)
+{
+    // TODO; lab3todo44 genInstGetptr
+    loadRegT4(inst.op2);
+    fout << "\tslli\tt4, t4, 2\n";
+    fout << "\tadd\tt5, sp, t4\n";
+    fout << "\taddi\tt5, t5, " << findOperand(inst.op1) << "\n";
+    storeRegT5(inst.des);
+}
+
+/**
  * @brief 把操作数1加载到t5寄存器
  * @param op
  * @author LeeYanyu1234 (343820386@qq.com)
@@ -851,6 +915,10 @@ void backend::Generator::loadRegT5(const ir::Operand &op)
         else if (op.type == ir::Type::IntLiteral)
         {
             fout << "\tli\tt5, " << op.name << "\n";
+        }
+        else if (op.type == ir::Type::IntPtr)
+        {
+            fout << "\tlw\tt5, " << findOperand(op) << "(sp)\n";
         }
         else
             assert(0 && "to be continue");
@@ -890,7 +958,6 @@ void backend::Generator::loadRegT4(const ir::Operand &op)
         else
             assert(0 && "to be continue");
     }
-    fout.flush();
 }
 
 /**
@@ -902,7 +969,7 @@ void backend::Generator::loadRegT4(const ir::Operand &op)
 void backend::Generator::storeRegT5(const ir::Operand &op)
 {
     // TODO; lab3todo25 storeRegT5
-    if (op.type == ir::Type::Int)
+    if (op.type == ir::Type::Int || op.type == ir::Type::IntPtr)
     {
         fout << "\tsw\tt5, " << findOperand(op) << "(sp)\n";
     }

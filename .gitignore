@@ -332,3 +332,6 @@ test/output/function/52_scope.exe
 test/output/function/50_short_circuit.exe
 test/output/function/78_side_effect.exe
 test/output/function/51_short_circuit3.exe
+test/score.py
+test/output/function/55_sort_test1.exe
+test/output/function/66_exgcd.exe
