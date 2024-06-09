@@ -890,11 +890,23 @@ void backend::Generator::genInstGeq(const ir::Instruction &inst)
 void backend::Generator::genInstGetptr(const ir::Instruction &inst)
 {
     // TODO; lab3todo44 genInstGetptr
-    loadRegT4(inst.op2);
-    fout << "\tslli\tt4, t4, 2\n";
-    fout << "\tadd\tt5, sp, t4\n";
-    fout << "\taddi\tt5, t5, " << findOperand(inst.op1) << "\n";
-    storeRegT5(inst.des);
+    if (isGlobal(inst.op1.name))
+    {
+        fout << "\tlui\tt3, %hi(" << inst.op1.name << ")\n";
+        fout << "\taddi\tt3, t3, %lo(" << inst.op1.name << ")\n"; // 全局数组的基地址在t3寄存器中
+        loadRegT4(inst.op2);                                      // 加载偏移量到t4寄存器
+        fout << "\tslli\tt4, t4, 2\n";                            // 偏移量*4
+        fout << "\tadd\tt5, t3, t4\n";                            // 计算地址
+        storeRegT5(inst.des);
+    }
+    else
+    {
+        loadRegT4(inst.op2);
+        fout << "\tslli\tt4, t4, 2\n";
+        fout << "\tadd\tt5, sp, t4\n";
+        fout << "\taddi\tt5, t5, " << findOperand(inst.op1) << "\n";
+        storeRegT5(inst.des);
+    }
 }
 
 /**
