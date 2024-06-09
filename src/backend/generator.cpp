@@ -11,6 +11,7 @@
 #include "backend/generator.h"
 
 #include <assert.h>
+#include <cstring>
 
 #define TODO assert(0 && "todo")
 
@@ -221,6 +222,7 @@ void backend::Generator::gen_func(const ir::Function &func)
 void backend::Generator::gen_instr(const ir::Instruction &inst, int idx, int argCnt)
 {
     // TODO; lab3todo11 gen_instr
+    fout << "#\t" << std::to_string(idx) << ": " << inst.draw() << "\n";
     ir::Operator op = inst.op;
     if (op == ir::Operator::_return)
         genInstReturn(inst);
@@ -268,6 +270,26 @@ void backend::Generator::gen_instr(const ir::Instruction &inst, int idx, int arg
         genInstGeq(inst);
     else if (op == ir::Operator::getptr)
         genInstGetptr(inst, argCnt);
+    else if (op == ir::Operator::fdef)
+        genInstFdef(inst);
+    else if (op == ir::Operator::fmul)
+        genInstFmul(inst);
+    else if (op == ir::Operator::cvt_i2f)
+        genInstCvt_i2f(inst);
+    else if (op == ir::Operator::fadd)
+        genInstFadd(inst);
+    else if (op == ir::Operator::fdiv)
+        genInstFdiv(inst);
+    else if (op == ir::Operator::fmov)
+        genInstFmov(inst);
+    else if (op == ir::Operator::flss)
+        genInstFlss(inst);
+    else if (op == ir::Operator::fneq)
+        genInstFneq(inst);
+    else if (op == ir::Operator::fsub)
+        genInstFsub(inst);
+    else if (op == ir::Operator::cvt_f2i)
+        genInstCvt_f2i(inst);
     else
         assert(0 && "to be continue");
     fout.flush();
@@ -293,7 +315,7 @@ int backend::Generator::saveReg(const ir::Function &func)
 
     for (auto inst : func.InstVec) // 扫描指令中出现的变量，为每一个局部变量分配一个栈空间
     {
-        if (inst->des.type == ir::Type::Int)
+        if (inst->des.type == ir::Type::Int || inst->des.type == ir ::Type::Float)
         {
             if (!isGlobal(inst->des.name))
                 addOperand(inst->des);
@@ -302,18 +324,26 @@ int backend::Generator::saveReg(const ir::Function &func)
         {
             addOperand(inst->des, stoi(inst->op1.name) * 4);
         }
+        else if (inst->des.type == ir::Type::FloatPtr && inst->op == ir::Operator::alloc && inst->op1.type == ir::Type::IntLiteral)
+        {
+            addOperand(inst->des, stoi(inst->op1.name) * 4);
+        }
         else if (inst->des.type == ir::Type::IntPtr && inst->op == ir::Operator::getptr)
         {
             addOperand(inst->des);
         }
+        else if (inst->des.type == ir::Type::FloatPtr && inst->op == ir::Operator::getptr)
+        {
+            addOperand(inst->des);
+        }
 
-        if (inst->op1.type == ir::Type::Int)
+        if (inst->op1.type == ir::Type::Int || inst->op1.type == ir::Type::Float)
         {
             if (!isGlobal(inst->op1.name))
                 addOperand(inst->op1);
         }
 
-        if (inst->op2.type == ir::Type::Int)
+        if (inst->op2.type == ir::Type::Int || inst->op2.type == ir::Type::Float)
         {
             if (!isGlobal(inst->op2.name))
                 addOperand(inst->op2);
@@ -327,7 +357,10 @@ int backend::Generator::saveReg(const ir::Function &func)
     {
         if (i <= 7)
         {
-            fout << "\tsw\ta" << i << ", " << findOperand(func.ParameterList[i].name) << "(sp)\n";
+            if (func.ParameterList[i].type == ir::Type::Float)
+                fout << "\tfsw\tfa" << i << ", " << findOperand(func.ParameterList[i].name) << "(sp)\n";
+            else
+                fout << "\tsw\ta" << i << ", " << findOperand(func.ParameterList[i].name) << "(sp)\n";
         }
         else
         {
@@ -420,6 +453,12 @@ void backend::Generator::genInstReturn(const ir::Instruction &inst)
         recoverReg();
         fout << "\tjr\tra\n";
     }
+    else if (inst.op1.type == ir::Type::Float)
+    {
+        fout << "\tflw\tfa0, " << findOperand(inst.op1.name) << "(sp)\n";
+        recoverReg();
+        fout << "\tjr\tra\n";
+    }
     else
     {
         assert(0 && "to be continue");
@@ -449,7 +488,14 @@ void backend::Generator::genInstCall(const ir::Instruction &inst)
             if (i <= 7)
             {
                 loadRegT5(callInstPtr->argumentList[i]);
-                fout << "\tmv\ta" << i << ", t5\n";
+                if (callInstPtr->argumentList[i].type == ir::Type::FloatLiteral)
+                    fout << "\tfmv.w.x\tfa" << i << ", t5\n";
+                else if (callInstPtr->argumentList[i].type == ir::Type::Float)
+                {
+                    fout << "\tflw\tfa" << i << ", " << findOperand(callInstPtr->argumentList[i]) << "(sp)\n";
+                }
+                else
+                    fout << "\tmv\ta" << i << ", t5\n";
             }
             else // 参数大于8个，已经超过参数寄存器上限，需要通过栈传参
             {
@@ -466,7 +512,14 @@ void backend::Generator::genInstCall(const ir::Instruction &inst)
         if (extendSize > 0)
             fout << "\taddi\tsp, sp, " << extendSize << "\n";
         if (inst.des.name != "null") // 返回值不为空时才接收返回值
-            fout << "\tsw\ta0, " << findOperand(inst.des.name) << "(sp)\n";
+        {
+            if (inst.des.type == ir::Type::Int)
+                fout << "\tsw\ta0, " << findOperand(inst.des.name) << "(sp)\n";
+            else if (inst.des.type == ir::Type::Float)
+                fout << "\tfsw\tfa0, " << findOperand(inst.des.name) << "(sp)\n";
+            else
+                assert(0 && "to be continue");
+        }
     }
 }
 
@@ -580,7 +633,15 @@ void backend::Generator::genInstStore(const ir::Instruction &inst, int argCnt)
     {
         //! 现在的问题是不能区分参数传递过来的数组和本地自定义的数组
         //! 需要增加一个参数来判断这个数组所在的区域是不是参数
-        if (inst.op2.type == ir::Type::Int)
+        if (inst.op2.type == ir::Type::Int && inst.des.type == ir::Type::Float)
+        {
+            loadRegT5(inst.des);
+            loadRegT4(inst.op2);
+            fout << "\tslli\tt4, t4, 2\n";
+            fout << "\tadd\tt3, sp, t4\n";
+            fout << "\tfsw\tft5, " << findOperand(inst.op1) << "(t3)\n";
+        }
+        else if (inst.op2.type == ir::Type::Int)
         {
             loadRegT5(inst.des);
             loadRegT4(inst.op2);
@@ -588,10 +649,15 @@ void backend::Generator::genInstStore(const ir::Instruction &inst, int argCnt)
             fout << "\tadd\tt3, sp, t4\n";
             fout << "\tsw\tt5, " << findOperand(inst.op1) << "(t3)\n";
         }
-        else if (inst.op2.type == ir::Type::IntLiteral)
+        else if (inst.op2.type == ir::Type::IntLiteral && inst.op1.type == ir::Type::IntPtr)
         {
             loadRegT5(inst.des);
             fout << "\tsw\tt5, " << findOperand(inst.op1) + stoi(inst.op2.name) * 4 << "(sp)\n";
+        }
+        else if (inst.op2.type == ir::Type::IntLiteral && inst.op1.type == ir::Type::FloatPtr)
+        {
+            loadRegT5(inst.des);
+            fout << "\tfsw\tft5, " << findOperand(inst.op1) + stoi(inst.op2.name) * 4 << "(sp)\n";
         }
         else
             assert(0 && "to be continue");
@@ -645,11 +711,22 @@ void backend::Generator::genInstLoad(const ir::Instruction &inst, int argCnt)
     {
         //! 现在的问题是不能区分参数传递过来的数组和本地自定义的数组
         //! 需要增加一个参数来判断这个数组所在的区域是不是参数
-        loadRegT4(inst.op2);
-        fout << "\tslli\tt4, t4, 2\n";
-        fout << "\tadd\tt3, sp, t4\n";
-        fout << "\tlw\tt5, " << findOperand(inst.op1) << "(t3)\n";
-        storeRegT5(inst.des);
+        if (inst.op1.type == ir::Type::IntPtr)
+        {
+            loadRegT4(inst.op2);
+            fout << "\tslli\tt4, t4, 2\n";
+            fout << "\tadd\tt3, sp, t4\n";
+            fout << "\tlw\tt5, " << findOperand(inst.op1) << "(t3)\n";
+            storeRegT5(inst.des);
+        }
+        else
+        {
+            loadRegT4(inst.op2);
+            fout << "\tslli\tt4, t4, 2\n";
+            fout << "\tadd\tt3, sp, t4\n";
+            fout << "\tflw\tft5, " << findOperand(inst.op1) << "(t3)\n";
+            storeRegT5(inst.des);
+        }
     }
     else // 参数传递过来的数组指针
     {
@@ -750,7 +827,13 @@ void backend::Generator::genInstGoto(const ir::Instruction &inst, int idx)
     else // 有条件跳转
     {
         loadRegT5(inst.op1);
-        fout << "\tbne\tt5, zero, " << instLabelMap[idx] << "\n";
+        if (inst.op1.type == ir::Type::Int)
+            fout << "\tbne\tt5, zero, " << instLabelMap[idx] << "\n";
+        else if (inst.op1.type == ir::Type::Float)
+        {
+            fout << "\tfmv.x.w\tt5, ft5\n";
+            fout << "\tbne\tt5, zero, " << instLabelMap[idx] << "\n";
+        }
     }
 }
 
@@ -932,6 +1015,178 @@ void backend::Generator::genInstGetptr(const ir::Instruction &inst, int argCnt)
     }
 }
 
+/** 生成fdef语句对应的汇编语句
+ * @brief
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-09
+ */
+void backend::Generator::genInstFdef(const ir::Instruction &inst)
+{
+    // TODO; lab3todo45 genInstFdef
+    if (inst.op1.type == ir::Type::FloatLiteral && inst.des.type == ir::Type::Float)
+    {
+        float fli = std::stof(inst.op1.name);
+        uint32_t hex;
+        std::memcpy(&hex, &fli, sizeof(hex));
+        fout << "\tli\tt6, " << hex << "\n";
+        fout << "\tsw\tt6, " << findOperand(inst.des.name) << "(sp)" << "\n";
+    }
+    else
+    {
+        assert(0 && "to be continue");
+    }
+}
+
+/**
+ * @brief 生成fmul语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-09
+ */
+void backend::Generator::genInstFmul(const ir::Instruction &inst)
+{
+    // TODO; lab3todo46 genInstFmul
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    fout << "\tfmul.s\t ft5, ft5, ft4\n";
+    storeRegT5(inst.des);
+    fout.flush();
+}
+
+/**
+ * @brief 生成cvt_i2f语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-09
+ */
+void backend::Generator::genInstCvt_i2f(const ir::Instruction &inst)
+{
+    // TODO; lab3todo47 genInstCvt_i2f
+    loadRegT5(inst.op1);
+    fout << "\tfcvt.s.w\t ft5, t5\n";
+    storeRegT5(inst.des);
+    fout.flush();
+}
+
+/**
+ * @brief 生成fadd语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-09
+ */
+void backend::Generator::genInstFadd(const ir::Instruction &inst)
+{
+    // TODO; lab3todo48 genInstFadd
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    fout << "\tfadd.s\t ft5, ft5, ft4\n";
+    storeRegT5(inst.des);
+    fout.flush();
+}
+
+/**
+ * @brief 生成fdiv语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-09
+ */
+void backend::Generator::genInstFdiv(const ir::Instruction &inst)
+{
+    // TODO; lab3todo49 genInstFdiv
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    fout << "\tfdiv.s\t ft5, ft5, ft4\n";
+    storeRegT5(inst.des);
+    fout.flush();
+}
+
+/**
+ * @brief 生成fmov语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-09
+ */
+void backend::Generator::genInstFmov(const ir::Instruction &inst)
+{
+    // TODO; lab3todo50 genInstFmov
+    if (inst.op1.type == ir::Type::Float && inst.des.type == ir::Type::Float)
+    {
+        fout << "\tflw\tft6, " << findOperand(inst.op1) << "(sp)" << "\n";
+        fout << "\tfsw\tft6, " << findOperand(inst.des) << "(sp)" << "\n";
+    }
+    else
+    {
+        assert(0 && "to be continue");
+    }
+}
+
+/**
+ * @brief 生成flss语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-09
+ */
+void backend::Generator::genInstFlss(const ir::Instruction &inst)
+{
+    // TODO; lab3todo51 genInstFlss
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    fout << "\tflt.s\tt5, ft5, ft4\n"; // flt.s的目标寄存器需要是整数寄存器
+    fout << "\tfcvt.s.w\tft5, t5\n";
+    storeRegT5(inst.des);
+    fout.flush();
+}
+
+/**
+ * @brief 生成fneq语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-09
+ */
+void backend::Generator::genInstFneq(const ir::Instruction &inst)
+{
+    // TODO; lab3todo52 genInstFneq
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    fout << "\tfeq.s\tt5, ft5, ft4\n";
+    fout << "\tseqz\tt5, t5\n";
+    fout << "\tfcvt.s.w\tft5, t5\n";
+    storeRegT5(inst.des);
+    fout.flush();
+}
+
+/**
+ * @brief 生成fsub语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-09
+ */
+void backend::Generator::genInstFsub(const ir::Instruction &inst)
+{
+    // TODO; lab3todo53 genInstFsub
+    loadRegT5(inst.op1);
+    loadRegT4(inst.op2);
+    fout << "\tfsub.s\t ft5, ft5, ft4\n";
+    storeRegT5(inst.des);
+    fout.flush();
+}
+
+/**
+ * @brief 生成cvt_f2i语句对应的汇编语句
+ * @param inst
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-09
+ */
+void backend::Generator::genInstCvt_f2i(const ir::Instruction &inst)
+{
+    // TODO; lab3todo54 genInstCvt_f2i
+    loadRegT5(inst.op1);
+    fout << "\tfcvt.w.s\t t5, ft5\n";
+    storeRegT5(inst.des);
+    fout.flush();
+}
+
 /**
  * @brief 把操作数1加载到t5寄存器
  * @param op
@@ -962,9 +1217,28 @@ void backend::Generator::loadRegT5(const ir::Operand &op)
         {
             fout << "\tli\tt5, " << op.name << "\n";
         }
-        else if (op.type == ir::Type::IntPtr)
+        else if (op.type == ir::Type::IntPtr || op.type == ir::Type::FloatPtr)
         {
             fout << "\tlw\tt5, " << findOperand(op) << "(sp)\n";
+        }
+        else if (op.type == ir::Type::Float) // 如果是浮点数必须要使用浮点寄存器
+        {
+            fout << "\tflw\tft5, " << findOperand(op) << "(sp)\n";
+        }
+        else if (op.type == ir::Type::FloatLiteral)
+        {
+            if (op.name == "0.0")
+            {
+                fout << "\tli\tt5, 0\n";
+                fout << "\tfmv.s.x\tft5, t5\n";
+            }
+            else
+            {
+                float fli = std::stof(op.name);
+                uint32_t hex;
+                std::memcpy(&hex, &fli, sizeof(hex));
+                fout << "\tli\tt5, " << hex << "\n";
+            }
         }
         else
             assert(0 && "to be continue");
@@ -1001,6 +1275,20 @@ void backend::Generator::loadRegT4(const ir::Operand &op)
         {
             fout << "\tli\tt4, " << op.name << "\n";
         }
+        else if (op.type == ir::Type::Float) // 如果是浮点数必须要使用浮点寄存器
+        {
+            fout << "\tflw\tft4, " << findOperand(op) << "(sp)\n";
+        }
+        else if (op.type == ir::Type::FloatLiteral)
+        {
+            if (op.name == "0.0")
+            {
+                fout << "\tli\tt4, 0\n";
+                fout << "\tfmv.s.x\tft4, t4\n";
+            }
+            else
+                assert(0 && "to be continue");
+        }
         else
             assert(0 && "to be continue");
     }
@@ -1015,9 +1303,13 @@ void backend::Generator::loadRegT4(const ir::Operand &op)
 void backend::Generator::storeRegT5(const ir::Operand &op)
 {
     // TODO; lab3todo25 storeRegT5
-    if (op.type == ir::Type::Int || op.type == ir::Type::IntPtr)
+    if (op.type == ir::Type::Int || op.type == ir::Type::IntPtr || op.type == ir::Type::FloatPtr)
     {
         fout << "\tsw\tt5, " << findOperand(op) << "(sp)\n";
+    }
+    else if (op.type == ir::Type::Float)
+    {
+        fout << "\tfsw\tft5, " << findOperand(op) << "(sp)\n";
     }
     else
         assert(0 && "to be continue");

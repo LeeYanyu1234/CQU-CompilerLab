@@ -93,6 +93,16 @@ namespace backend
         void genInstLeq(const ir::Instruction &);
         void genInstGeq(const ir::Instruction &);
         void genInstGetptr(const ir::Instruction &, int);
+        void genInstFdef(const ir::Instruction &);
+        void genInstFmul(const ir::Instruction &);
+        void genInstCvt_i2f(const ir::Instruction &);
+        void genInstFadd(const ir::Instruction &);
+        void genInstFdiv(const ir::Instruction &);
+        void genInstFmov(const ir::Instruction &);
+        void genInstFlss(const ir::Instruction &);
+        void genInstFneq(const ir::Instruction &);
+        void genInstFsub(const ir::Instruction &);
+        void genInstCvt_f2i(const ir::Instruction &);
 
         void loadRegT5(const ir::Operand &);
         void loadRegT4(const ir::Operand &);

@@ -54,9 +54,9 @@ namespace rv
         F1,  // ft1        floating-point temporary 1           Caller
         F2,  // ft2        floating-point temporary 2           Caller
         F3,  // ft3        floating-point temporary 3           Caller
-        F4,  // ft4        floating-point temporary 4           Caller
-        F5,  // ft5        floating-point temporary 5           Caller
-        F6,  // ft6        floating-point temporary 6           Caller
+        F4,  // ft4        floating-point temporary 4           Caller // fop2
+        F5,  // ft5        floating-point temporary 5           Caller // fop1/fdes
+        F6,  // ft6        floating-point temporary 6           Caller // 临时变量
         F7,  // ft7        floating-point temporary 7           Caller
         F8,  // fs0        floating-point saved register 0      Callee
         F9,  // fs1        floating-point saved register 1      Callee

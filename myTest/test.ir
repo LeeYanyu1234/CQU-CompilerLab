@@ -2,112 +2,181 @@ void global()
 	0: return null
 end
 
-int exgcd(int a_Scp1,int b_Scp1,int* x_Scp1,int* y_Scp1)
-	0: mov t0, b_Scp1
+void assert(int cond_Scp1)
+	0: eq t18, 0, cond_Scp1
+	1: if t18 goto [pc, 2]
+	2: goto [pc, 3]
+	3: call null, error()
+	4: goto [pc, 2]
+	5: call null, ok()
+	6: __unuse__ null, null, null
+	7: return null
+end
+
+void assert_not(int cond_Scp1)
+	0: if cond_Scp1 goto [pc, 2]
+	1: goto [pc, 3]
+	2: call null, error()
+	3: goto [pc, 2]
+	4: call null, ok()
+	5: __unuse__ null, null, null
+	6: return null
+end
+
+float circle_area(int radius_Scp1)
+	0: fdef t5, 03.141592653589793
+	1: cvt_i2f t6, radius_Scp1
+	2: fmul t5, t5, t6
+	3: cvt_i2f t7, radius_Scp1
+	4: fmul t5, t5, t7
+	5: mov t8, radius_Scp1
+	6: mul t8, t8, radius_Scp1
+	7: fdef t9, 03.141592653589793
+	8: cvt_i2f t10, t8
+	9: fmul t9, t9, t10
+	10: fadd t5, t5, t9
+	11: def t11, 2
+	12: cvt_i2f t12, t11
+	13: fdiv t5, t5, t12
+	14: return t5
+end
+
+void error()
+	0: call null, putch(101)
+	1: call null, putch(114)
+	2: call null, putch(114)
+	3: call null, putch(111)
+	4: call null, putch(114)
+	5: call null, putch(10)
+	6: return null
+end
+
+float float_abs(float x_Scp1)
+	0: fmov t0, x_Scp1
 	1: def t1, 0
-	2: eq t0, t0, t1
-	3: if t0 goto [pc, 2]
-	4: goto [pc, 17]
-	5: def t2, 0
-	6: def t3, 1
-	7: def t4, 0
-	8: mul t3, t3, t4
-	9: add t2, t2, t3
-	10: def t5, 1
-	11: store t5, x_Scp1, t2
-	12: def t6, 0
-	13: def t7, 1
-	14: def t8, 0
-	15: mul t7, t7, t8
-	16: add t6, t6, t7
-	17: def t9, 0
-	18: store t9, y_Scp1, t6
-	19: return a_Scp1
-	20: goto [pc, 46]
-	21: mov t10, a_Scp1
-	22: mod t10, t10, b_Scp1
-	23: def t11, 0
-	24: getptr t12, x_Scp1, t11
-	25: def t13, 0
-	26: getptr t14, y_Scp1, t13
-	27: call t15, exgcd(b_Scp1, t10, t12, t14)
-	28: mov r_Scp2, t15
-	29: def t16, 0
-	30: def t17, 1
-	31: def t18, 0
-	32: mul t17, t17, t18
-	33: add t16, t16, t17
-	34: load t19, x_Scp1, t16
-	35: mov t_Scp2, t19
-	36: def t20, 0
-	37: def t21, 1
-	38: def t22, 0
-	39: mul t21, t21, t22
-	40: add t20, t20, t21
-	41: def t23, 0
-	42: def t24, 1
-	43: def t25, 0
-	44: mul t24, t24, t25
-	45: add t23, t23, t24
-	46: load t26, y_Scp1, t23
-	47: store t26, x_Scp1, t20
-	48: def t27, 0
-	49: def t28, 1
-	50: def t29, 0
-	51: mul t28, t28, t29
-	52: add t27, t27, t28
-	53: mov t30, t_Scp2
-	54: mov t31, a_Scp1
-	55: div t31, t31, b_Scp1
-	56: def t32, 0
-	57: def t33, 1
-	58: def t34, 0
-	59: mul t33, t33, t34
-	60: add t32, t32, t33
-	61: load t35, y_Scp1, t32
-	62: mul t31, t31, t35
-	63: sub t30, t30, t31
-	64: store t30, y_Scp1, t27
-	65: return r_Scp2
-	66: __unuse__ null, null, null
+	2: cvt_i2f t2, t1
+	3: flss t0, t0, t2
+	4: fneq t4, t0, 0.0
+	5: if t4 goto [pc, 2]
+	6: goto [pc, 3]
+	7: fsub t3, 0.0, x_Scp1
+	8: return t3
+	9: __unuse__ null, null, null
+	10: return x_Scp1
+end
+
+int float_eq(float a_Scp1,float b_Scp1)
+	0: fmov t13, a_Scp1
+	1: fsub t13, t13, b_Scp1
+	2: call t14, float_abs(t13)
+	3: fmov t15, t14
+	4: fdef t16, 0.000001
+	5: flss t15, t15, t16
+	6: fneq t17, t15, 0.0
+	7: if t17 goto [pc, 2]
+	8: goto [pc, 3]
+	9: return 1
+	10: goto [pc, 2]
+	11: return 0
+	12: __unuse__ null, null, null
 end
 
 int main()
 	0: call null, global()
-	1: def a_Scp1, 7
-	2: def b_Scp1, 15
-	3: alloc x_Scp1, 1
-	4: store 1, x_Scp1, 0
-	5: alloc y_Scp1, 1
-	6: store 1, y_Scp1, 0
-	7: def t36, 0
-	8: getptr t37, x_Scp1, t36
-	9: def t38, 0
-	10: getptr t39, y_Scp1, t38
-	11: call t40, exgcd(a_Scp1, b_Scp1, t37, t39)
-	12: def t41, 0
-	13: def t42, 1
-	14: def t43, 0
-	15: mul t42, t42, t43
-	16: add t41, t41, t42
-	17: def t44, 0
-	18: def t45, 1
-	19: def t46, 0
-	20: mul t45, t45, t46
-	21: add t44, t44, t45
-	22: load t47, x_Scp1, t44
-	23: mod t47, t47, b_Scp1
-	24: add t47, t47, b_Scp1
-	25: mod t47, t47, b_Scp1
-	26: store t47, x_Scp1, t41
-	27: def t48, 0
-	28: def t49, 1
-	29: def t50, 0
-	30: mul t49, t49, t50
-	31: add t48, t48, t49
-	32: load t51, x_Scp1, t48
-	33: call null, putint(t51)
-	34: return 0
+	1: fdef f_Scp1, -0.100000
+	2: call t19, float_eq(0.078125, -33000.000000)
+	3: call null, assert_not(t19)
+	4: call t20, float_eq(95.033188, 34.557518)
+	5: call null, assert_not(t20)
+	6: call t21, float_eq(34.557518, 34.557518)
+	7: call null, assert(t21)
+	8: call t22, circle_area(5)
+	9: call t23, circle_area(5)
+	10: call t24, float_eq(t22, t23)
+	11: call null, assert(t24)
+	12: call t25, float_eq(233.000000, 4095.000000)
+	13: call null, assert_not(t25)
+	14: call null, ok()
+	15: call null, ok()
+	16: call null, ok()
+	17: def i_Scp1, 1
+	18: def p_Scp1, 0
+	19: alloc arr_Scp1, 10
+	20: fdef t26, 1.
+	21: store t26, arr_Scp1, 0
+	22: fdef t27, 2.000000
+	23: store t27, arr_Scp1, 1
+	24: fdef t28, 0.0
+	25: store t28, arr_Scp1, 2
+	26: fdef t29, 0.0
+	27: store t29, arr_Scp1, 3
+	28: fdef t30, 0.0
+	29: store t30, arr_Scp1, 4
+	30: fdef t31, 0.0
+	31: store t31, arr_Scp1, 5
+	32: fdef t32, 0.0
+	33: store t32, arr_Scp1, 6
+	34: fdef t33, 0.0
+	35: store t33, arr_Scp1, 7
+	36: fdef t34, 0.0
+	37: store t34, arr_Scp1, 8
+	38: fdef t35, 0.0
+	39: store t35, arr_Scp1, 9
+	40: def t36, 0
+	41: getptr t37, arr_Scp1, t36
+	42: call t38, getfarray(t37)
+	43: mov len_Scp1, t38
+	44: mov t39, i_Scp1
+	45: def t40, 1000000000
+	46: lss t39, t39, t40
+	47: if t39 goto [pc, 2]
+	48: goto [pc, 35]
+	49: call t41, getfloat()
+	50: fmov input_Scp2, t41
+	51: fdef t42, 03.141592653589793
+	52: fmul t42, t42, input_Scp2
+	53: fmul t42, t42, input_Scp2
+	54: fmov area_Scp2, t42
+	55: cvt_f2i t43, input_Scp2
+	56: call t44, circle_area(t43)
+	57: fmov area_trunc_Scp2, t44
+	58: def t45, 0
+	59: def t46, 1
+	60: mul t46, t46, p_Scp1
+	61: add t45, t45, t46
+	62: def t47, 0
+	63: def t48, 1
+	64: mul t48, t48, p_Scp1
+	65: add t47, t47, t48
+	66: load t49, arr_Scp1, t47
+	67: fadd t49, t49, input_Scp2
+	68: store t49, arr_Scp1, t45
+	69: call null, putfloat(area_Scp2)
+	70: call null, putch(32)
+	71: cvt_f2i t50, area_trunc_Scp2
+	72: call null, putint(t50)
+	73: call null, putch(10)
+	74: mov t51, i_Scp1
+	75: def t52, 10
+	76: mul t51, t51, t52
+	77: mov i_Scp1, t51
+	78: mov t53, p_Scp1
+	79: def t54, 1
+	80: add t53, t53, t54
+	81: mov p_Scp1, t53
+	82: goto [pc, -38]
+	83: __unuse__ null, null, null
+	84: def t55, 0
+	85: getptr t56, arr_Scp1, t55
+	86: call null, putfarray(len_Scp1, t56)
+	87: return 0
+end
+
+void ok()
+	0: call null, putch(111)
+	1: call null, putch(107)
+	2: call null, putch(10)
+	3: return null
 end
 
 GVT:

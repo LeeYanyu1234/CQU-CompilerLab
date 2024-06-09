@@ -541,7 +541,7 @@ void frontend::Analyzer::analyzeStmt(Stmt *root, vector<ir::Instruction *> &buff
                 {
                     //? 95号测试点 if (x < 0)
                     Operand tmpVar = Operand(getTmp(), Type::Float);
-                    buffer.push_back(new Instruction({cond->v, cond->t}, {"0,0", Type::FloatLiteral}, {tmpVar}, {Operator::fneq}));
+                    buffer.push_back(new Instruction({cond->v, cond->t}, {"0.0", Type::FloatLiteral}, {tmpVar}, {Operator::fneq}));
                     buffer.push_back(new Instruction({tmpVar}, {}, {"2", Type::IntLiteral}, {Operator::_goto}));
                 }
                 else
