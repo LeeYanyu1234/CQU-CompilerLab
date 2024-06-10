@@ -12,7 +12,7 @@ elif step == "-s1":
     oftype = "json"
 elif step == "-s2":
     oftype = "ir"
-elif step == "S":
+elif step == "-S":
     oftype = "s"
 else:
     print("illegal input")

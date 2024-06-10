@@ -1,3 +1,13 @@
+/**
+ * @file generator.h
+ * @brief 目标函数生成器
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @version 1.0.1
+ * @date 2024-06-06
+ *
+ * @copyright Copyright (c) 2024 Chongqing University
+ *
+ */
 #ifndef GENERARATOR_H
 #define GENERARATOR_H
 
@@ -5,55 +15,114 @@
 #include "backend/rv_def.h"
 #include "backend/rv_inst_impl.h"
 
-#include<map>
-#include<string>
-#include<vector>
-#include<fstream>
+#include <map>
+#include <string>
+#include <vector>
+#include <fstream>
 
-namespace backend {
-
-// it is a map bewteen variable and its mem addr, the mem addr of a local variable can be identified by ($sp + off)
-struct stackVarMap {
-    std::map<ir::Operand, int> _table;
+namespace backend
+{
 
     /**
-     * @brief find the addr of a ir::Operand
-     * @return the offset
-    */
-    int find_operand(ir::Operand);
+     * @brief 栈中变量与偏移量的映射表
+     * @author LeeYanyu1234 (343820386@qq.com)
+     * @date 2024-06-06
+     */
+    // struct stackVarMap
+    // {
+    //     std::map<ir::Operand, int> _table;
 
-    /**
-     * @brief add a ir::Operand into current map, alloc space for this variable in memory 
-     * @param[in] size: the space needed(in byte)
-     * @return the offset
-    */
-    int add_operand(ir::Operand, uint32_t size = 4);
-};
+    //     int find_operand(ir::Operand);
+    //     int add_operand(ir::Operand, uint32_t size = 4);
+    // };
 
+    struct Generator
+    {
+        // TODO; lab3todo18 Generator
+        const ir::Program &program;              // the program to gen
+        std::ofstream &fout;                     // output file
+        std::map<std::string, int> stackVarMap;  // 栈中变量与偏移量的映射表
+        int stackSize;                           // 栈大小
+        std::map<int, std::string> instLabelMap; // 指令地址与标签的映射
+        int instLabelSize;                       // 指令地址标签计数
+        int orCnt = 0;                           // or指令跳转计数
+        int andCnt = 0;                          // and指令跳转计数
 
-struct Generator {
-    const ir::Program& program;         // the program to gen
-    std::ofstream& fout;                 // output file
+        Generator(ir::Program &, std::ofstream &);
 
-    Generator(ir::Program&, std::ofstream&);
+        // reg allocate api
+        // rv::rvREG getRd(ir::Operand);
+        // rv::rvFREG fgetRd(ir::Operand);
+        // rv::rvREG getRs1(ir::Operand);
+        // rv::rvREG getRs2(ir::Operand);
+        // rv::rvFREG fgetRs1(ir::Operand);
+        // rv::rvFREG fgetRs2(ir::Operand);
 
-    // reg allocate api
-    rv::rvREG getRd(ir::Operand);
-    rv::rvFREG fgetRd(ir::Operand);
-    rv::rvREG getRs1(ir::Operand);
-    rv::rvREG getRs2(ir::Operand);
-    rv::rvFREG fgetRs1(ir::Operand);
-    rv::rvFREG fgetRs2(ir::Operand);
+        // generate wrapper function
+        void gen();
+        void initGlobaVar(const ir::Function &);
+        void gen_func(const ir::Function &);
+        void gen_instr(const ir::Instruction &, int idx, int argCnt);
 
-    // generate wrapper function
-    void gen();
-    void gen_func(const ir::Function&);
-    void gen_instr(const ir::Instruction&);
-};
+        // 辅助函数生成
+        int saveReg(const ir::Function &);
+        void genJumpLabel(const ir::Function &);
+        void recoverReg();
 
+        // 辅助代码生成
+        void genInstReturn(const ir::Instruction &);
+        void genInstCall(const ir::Instruction &);
+        void genInstDef(const ir::Instruction &);
+        void genInstMov(const ir::Instruction &);
+        void genInstAdd(const ir::Instruction &);
+        void genInstAlloc(const ir::Instruction &);
+        void genInstStore(const ir::Instruction &, int);
+        void genInstMul(const ir::Instruction &);
+        void genInstLoad(const ir::Instruction &, int);
+        void genInstSub(const ir::Instruction &);
+        void genInstDiv(const ir::Instruction &);
+        void genInstMod(const ir::Instruction &);
+        void genInstEq(const ir::Instruction &);
+        void genInstGoto(const ir::Instruction &, int);
+        void genInstOr(const ir::Instruction &);
+        void genInstAnd(const ir::Instruction &);
+        void genInstUnuse(const ir::Instruction &);
+        void genInstLss(const ir::Instruction &);
+        void genInstGtr(const ir::Instruction &);
+        void genInstNeq(const ir::Instruction &);
+        void genInstLeq(const ir::Instruction &);
+        void genInstGeq(const ir::Instruction &);
+        void genInstGetptr(const ir::Instruction &, int);
+        void genInstFdef(const ir::Instruction &);
+        void genInstFmul(const ir::Instruction &);
+        void genInstCvt_i2f(const ir::Instruction &);
+        void genInstFadd(const ir::Instruction &);
+        void genInstFdiv(const ir::Instruction &);
+        void genInstFmov(const ir::Instruction &);
+        void genInstFlss(const ir::Instruction &);
+        void genInstFneq(const ir::Instruction &);
+        void genInstFsub(const ir::Instruction &);
+        void genInstCvt_f2i(const ir::Instruction &);
 
+        void loadRegT5(const ir::Operand &);
+        void loadRegT4(const ir::Operand &);
+        void storeRegT5(const ir::Operand &);
+
+        // 设置对应字段
+        void setOption();
+        void setText();
+        void setData();
+        void setGlobal(std::string);
+        void setTypeFunc(std::string);
+        void setTypeObj(std::string);
+        void setLabel(std::string);
+        void setIntInitVar(std::string);
+
+        bool isGlobal(const std::string &);
+        int findOperand(ir::Operand);
+        void addOperand(ir::Operand, uint32_t size = 4);
+    };
 
 } // namespace backend
-
 
 #endif

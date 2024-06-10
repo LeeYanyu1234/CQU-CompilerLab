@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/bin/compiler",
             "args": [
-                "./test/testcase/basic/00_main.sy",
+                // "./test/testcase/basic/00_main.sy",
                 // "./test/testcase/basic/01_var_defn2.sy",
                 // "./test/testcase/basic/02_var_defn3.sy",
                 // "./test/testcase/basic/03_arr_defn2.sy",
@@ -64,12 +64,14 @@
                 // "./test/testcase/function/78_side_effect.sy",
                 // "./test/testcase/function/79_var_name.sy",
                 // "./test/testcase/function/89_many_globals.sy",
-                // "./test/testcase/function/95_float.sy",
-                // "-s2",
+                "./test/testcase/function/95_float.sy",
                 // "-e",
+                // "-s2",
+                // "-o",
+                // "./myTest/test.ir",
                 "-S",
                 "-o",
-                "./myTest/test.ir"
+                "./myTest/test.s"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

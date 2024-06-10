@@ -76,7 +76,7 @@ namespace ir
         case Operator::neq:
             return "neq";
         case Operator::fneq:
-            return "neq";
+            return "fneq";
         case Operator::_not:
             return "not";
         case Operator::_or:

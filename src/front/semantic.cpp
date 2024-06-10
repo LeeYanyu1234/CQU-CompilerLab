@@ -161,8 +161,8 @@ ir::Program frontend::Analyzer::get_ir_program(CompUnit *root)
     ir::Program program; // 存放ir程序
 
     // 添加运行时库到符号表中
-    map<std::string, ir::Function *> *libFuncs = get_lib_funcs();
-    for (auto libFunc = libFuncs->begin(); libFunc != libFuncs->end(); libFunc++)
+    map<std::string, ir::Function *> libFuncs = *get_lib_funcs();
+    for (auto libFunc = libFuncs.begin(); libFunc != libFuncs.end(); libFunc++)
     {
         symbol_table.functions[libFunc->first] = libFunc->second;
     }
@@ -178,7 +178,10 @@ ir::Program frontend::Analyzer::get_ir_program(CompUnit *root)
         if (ste.dimension.size())
             program.globalVal.push_back({ste.operand, ste.size});
         else
-            program.globalVal.push_back({ste.operand, 0});
+        {
+            if (ste.isConst == false)
+                program.globalVal.push_back({ste.operand, 0});
+        }
     }
 
     //* 处理全局变量的初始化
@@ -189,6 +192,11 @@ ir::Program frontend::Analyzer::get_ir_program(CompUnit *root)
 
     program.functions.push_back(globalFunc);
 
+    // 删除符号表中的运行时库
+    for (auto libFunc = libFuncs.begin(); libFunc != libFuncs.end(); libFunc++)
+    {
+        symbol_table.functions.erase(libFunc->first);
+    }
     for (auto func = symbol_table.functions.begin(); func != symbol_table.functions.end(); func++)
     {
         if (func->first == "main") // 在main函数的最前面生成对global函数的调用
@@ -533,7 +541,7 @@ void frontend::Analyzer::analyzeStmt(Stmt *root, vector<ir::Instruction *> &buff
                 {
                     //? 95号测试点 if (x < 0)
                     Operand tmpVar = Operand(getTmp(), Type::Float);
-                    buffer.push_back(new Instruction({cond->v, cond->t}, {"0,0", Type::FloatLiteral}, {tmpVar}, {Operator::fneq}));
+                    buffer.push_back(new Instruction({cond->v, cond->t}, {"0.0", Type::FloatLiteral}, {tmpVar}, {Operator::fneq}));
                     buffer.push_back(new Instruction({tmpVar}, {}, {"2", Type::IntLiteral}, {Operator::_goto}));
                 }
                 else
@@ -1407,8 +1415,8 @@ void frontend::Analyzer::analyzeVarDef(VarDef *root, vector<ir::Instruction *> &
             else // 如果是数组，符号表中为整型指针
             {
                 symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::IntPtr), dimension, size);
-                if (symbol_table.scope_stack.size() > 1) // 如果不是全局变量，需要添加一条alloc指令分配空间
-                    buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::IntPtr}, {Operator::alloc}));
+                // if (symbol_table.scope_stack.size() > 1) // 如果不是全局变量，需要添加一条alloc指令分配空间
+                buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::IntPtr}, {Operator::alloc}));
             }
         }
         else if (type == Type::Float) // 变量类型为浮点型
@@ -1421,8 +1429,8 @@ void frontend::Analyzer::analyzeVarDef(VarDef *root, vector<ir::Instruction *> &
             else // 如果是数组，符号表中为浮点型指针
             {
                 symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::FloatPtr), dimension, size);
-                if (symbol_table.scope_stack.size() > 1) // 如果不是全局变量，需要添加一条alloc指令分配空间
-                    buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::FloatPtr}, {Operator::alloc}));
+                // if (symbol_table.scope_stack.size() > 1) // 如果不是全局变量，需要添加一条alloc指令分配空间
+                buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::FloatPtr}, {Operator::alloc}));
             }
         }
         else
@@ -1581,8 +1589,9 @@ void frontend::Analyzer::analyzeInitVal(InitVal *root, vector<ir::Instruction *>
         // Operand expVar = exp->t == Type::IntLiteral ? IntLiteral2Int(exp->v, buffer) : FloatLiteral2Float(exp->v, buffer);
         if (root->t == Type::Int && exp->t == Type::IntLiteral)
         {
-            Operand expVar = IntLiteral2Int(exp->v, buffer);
-            buffer.push_back(new Instruction({root->v, Type::IntPtr}, {TOS(offset), Type::IntLiteral}, {expVar}, {Operator::store}));
+            buffer.push_back(new Instruction({root->v, Type::IntPtr}, {TOS(offset), Type::IntLiteral}, {exp->v, exp->t}, {Operator::store}));
+            //     Operand expVar = IntLiteral2Int(exp->v, buffer);
+            //     buffer.push_back(new Instruction({root->v, Type::IntPtr}, {TOS(offset), Type::IntLiteral}, {expVar}, {Operator::store}));
         }
         else if (root->t == Type::Float && exp->t == Type::FloatLiteral)
         {
@@ -1727,11 +1736,12 @@ void frontend::Analyzer::analyzeConstDef(ConstDef *root, vector<ir::Instruction 
         else // 如果是整型数组
         {
             symbol_table.scope_stack.back().table[term->token.value] = STE(Operand(root->arr_name, Type::IntPtr), dimension, size, true);
-            constInitVal->t = Type::IntLiteral;      //? 数组需要添加定义指令，此时指代初始值的期望类型
-            if (symbol_table.scope_stack.size() > 1) // 如果不是一个全局变量，需要通过alloc分配空间
-            {
-                buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::IntPtr}, {Operator::alloc}));
-            }
+            constInitVal->t = Type::IntLiteral; //? 数组需要添加定义指令，此时指代初始值的期望类型
+
+            // if (symbol_table.scope_stack.size() > 1) // 如果不是一个全局变量，需要通过alloc分配空间
+            // {
+            buffer.push_back(new Instruction({TOS(size), Type::IntLiteral}, {}, {root->arr_name, Type::IntPtr}, {Operator::alloc}));
+            // }
         }
     }
     else if (type == Type::Float) // 常量类型为浮点型
