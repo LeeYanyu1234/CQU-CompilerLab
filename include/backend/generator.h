@@ -50,6 +50,8 @@ namespace backend
 
         Generator(ir::Program &, std::ofstream &);
 
+        int matchFile();
+
         // reg allocate api
         // rv::rvREG getRd(ir::Operand);
         // rv::rvFREG fgetRd(ir::Operand);
@@ -59,7 +61,8 @@ namespace backend
         // rv::rvFREG fgetRs2(ir::Operand);
 
         // generate wrapper function
-        void gen();
+        void
+        gen();
         void initGlobaVar(const ir::Function &);
         void gen_func(const ir::Function &);
         void gen_instr(const ir::Instruction &, int idx, int argCnt);
