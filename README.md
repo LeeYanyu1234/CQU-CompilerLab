@@ -310,6 +310,27 @@ python3 test.py s0
 }
 ```
 
+> [!warning]
+>
+> 这里还需要修改一下CMakeLists.txt文件中的一点bug，原始的错误语句如下：
+>
+> ```makefile
+> set(CMAKE_CXX_FLAGS   "-g")                     # 调试信息
+> set(CMAKE_CXX_FLAGS   "-Wall")                  # 开启所有警告
+> ```
+>
+> 这种写法是有问题的，如果你希望同时开启调试信息和警告信息，需要按照如下写法：
+>
+> ```makefile
+> set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall")  # 调试信息和所有警告
+> ```
+>
+> 如果按照第一种写法是不会生成调试信息的，也就不能启用gdb调试。
+>
+> > [!note]
+> >
+> > 所谓的调试信息其实就是符号表和一些其他的信息，我们现在也是在编写一个编译器，如果你写完了实验三，那么你会发现我们的符号表的信息其实是没有出现在汇编代码中的，开启这个选项，实际上就是在生成汇编代码的时候，加入一些标识符，告知gdb一些变量的信息和栈信息。然后在运行的时候就能匹配这些信息，从而得知原始的变量名并且呈现出来。
+
 最后使用F5快捷键就可以开启调试了，具体的调试方法我就不介绍了，自己STFW吧。
 
 
@@ -380,7 +401,7 @@ python3 test.py s2
 
 ### 使用python脚本测试（目标代码生成测试）
 
-```c++
+```bash
 cd /coursegrader/test
 python3 build.py
 python3 run.py S
