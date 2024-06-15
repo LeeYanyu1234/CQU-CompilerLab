@@ -89,33 +89,244 @@ docker run -it -v {你的代码框架目录}:/coursegrader frankd35/demo:v3
 
 ### 3.4 编译项目
 
+进行到这一步终于可以开始编译项目了，第一步是修改CMakeLists.txt文件中的几个小bug。在文件中找一个位置添加以下两行代码：
 
+```makefile
+set(CMAKE_C_COMPILER "/usr/bin/x86_64-linux-gnu-gcc-7")
+set(CMAKE_CXX_COMPILER "/usr/bin/x86_64-linux-gnu-g++-7")
+```
 
-## 常用指令
+这两行代码的作用是指定C和C++编译器的路径和版本。
 
-### 启动docker
+第二步是在`/coursegrader`目录下创建一个`build`文件夹，然后进入`build`文件夹，依次执行以下命令：
 
 ```bash
-sudo service docker start
-docker ps -a
-docker start 6ed7c6e378fd
+cmake ..
+make
+```
+
+这样就可以完成项目的编译，编译的结果是在`/coursegrader/bin`目录下生成一个名为`compiler`的可执行文件和一些其它的中间文件。
+
+#### 3.4.1 单点测试
+
+单点测试需要输入对应的参数执行`compiler`程序。程序会根据我们输入参数的不同执行不同的功能，对参数的解析过程在`main.cpp`文件中，可以自己研究一下。这里给出一个示例，比如我要执行`00_main.sy`测试点的riscv汇编代码生成功能：
+
+```bash
+./bin/compiler ./test/testcase/basic/00_main.sy -S -o ./myTest/test.out
+```
+
+第一个参数`./bin/compiler`是程序的路径，第二个`./test/testcase/basic/00_main.sy`是输入的文件路径，第三个`-S`是执行的阶段，第四个`-o`是输出文件选项，第五个`./myTest/test.out`是输出文件的路径和文件名。
+
+这里再提供一个我的常用的快速指令吧，可以完成编译->单点测试的全过程：
+
+```bash
+cd /coursegrader
+rm -rf build/
+mkdir build
+cd ./build
+cmake ..
+make
+cd /coursegrader
+./bin/compiler ./test/testcase/basic/00_main.sy S -o ./myTest/test.out
+```
+
+其实也可以把这些代码写成一个脚本，不过我不会，有兴趣可以自己探索一下。
+
+
+
+#### 3.4.2 集中测试
+
+除了上一小节提供的单点测试的方法，框架中还提供了python脚本来进行集中测试，测试的脚本在`test`目录下。可以依次执行以下命令来进行测试：
+
+```bash
+cd /coursegrader/test
+python3 build.py
+python3 run.py s0
+python3 test.py s0
+```
+
+> [!note]
+>
+> python脚本在输入功能参数的时候和单点测试有一点区别，单点测试的时候需要添加"-"，而功能测试不需要添加，这是因为在脚本中写了代码自动添加"-"。
+>
+> ~~我不理解，为什么不能设计成统一的方式，非要加些代码来实现自动加"-"，这不是吃力不讨好吗？~~
+
+
+
+### 3.5 配置调试环境
+
+不知道大家之前是怎么debug的，是用IDE提供的debug功能还是printf大法。不管之前是怎么操作的，在不配置环境的情况下这两种方法在我们本次实验的环境中都不能用。
+
+#### 3.5.1 printf大法
+
+如果你希望使用printf大法，那么需要按照实验指导书中提供的方法，打开CMakeLists.txt文件中关于调试标志的注释，然后在代码中适当的位置添加头文件并加入printf语句。
+
+> [!note]
+>
+> 如果你在代码中直接printf是不会有任何输出的，原因在于代码中控制台输出被条件编译宏控制了，我们直接编写的printf会被预处理器忽略，从而不会出现在编译后的程序中，必须要加入对应的条件编译逻辑才能完成输出：
+>
+> ```c++
+> #ifdef DEBUG_DFA
+>     printf("Debug DFA: Some debug information\n");
+> #endif
+>
+> #ifdef DEBUG_SCANNER
+>     printf("Debug Scanner: Some debug information\n");
+> #endif
+>
+> #ifdef DEBUG_PARSER
+>     printf("Debug Parser: Some debug information\n");
+> #endif
+> ```
+
+
+
+#### 3.5.2 gdb调试
+
+如果你希望能够使用断点调试或者监视程序运行过程中的变量，那么只能配置gdb调试环境。gdb的使用方法还请RTFM+STFW。不过如果是在终端使用gdb感觉还是不够方便，所以这里提供一些方法把gdb连接到vscode，这样使用gdb就和在IDE中使用debug功能差不多了。
+
+首先请确保你的vscode直接连接到了容器，而不是wsl。检查的方法很简单，看vscode左下角有没有容器两个字。然后在你的项目目录下添加一个名为`.vscode`的文件夹，文件夹中创建两个文件，分别名为`tasks.json`和`launch.json`，前者是用于指导项目编译的，后者是用于指导debug工具连接的。
+
+在`tasks.json`文件中输入以下内容：
+
+```json
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "cd ${workspaceFolder} && rm -rf build/ && mkdir build && cd ./build && cmake .. && make && cd ${workspaceFolder}",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "编译 /coursegrader 项目"
+        }
+    ]
+}
+```
+
+在`launch.json`文件夹中输入以下内容：
+
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Compiler",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/compiler",
+            "args": [
+                // "./test/testcase/basic/00_main.sy",
+                // "./test/testcase/basic/01_var_defn2.sy",
+                // "./test/testcase/basic/02_var_defn3.sy",
+                // "./test/testcase/basic/03_arr_defn2.sy",
+                // "./test/testcase/basic/04_arr_defn3.sy",
+                // "./test/testcase/basic/06_const_var_defn2.sy",
+                // "./test/testcase/basic/07_const_var_defn3.sy",
+                // "./test/testcase/basic/08_const_array_defn.sy",
+                // "./test/testcase/basic/09_func_defn.sy",
+                // "./test/testcase/basic/10_var_defn_func.sy",
+                // "./test/testcase/basic/11_add2.sy",
+                // "./test/testcase/basic/12_addc.sy",
+                // "./test/testcase/basic/13_sub2.sy",
+                // "./test/testcase/basic/14_subc.sy",
+                // "./test/testcase/basic/15_mul.sy",
+                // "./test/testcase/basic/16_mulc.sy",
+                // "./test/testcase/basic/17_div.sy",
+                // "./test/testcase/basic/18_divc.sy",
+                // "./test/testcase/basic/20_rem.sy",
+                // "./test/testcase/basic/21_if_test2.sy",
+                // "./test/testcase/basic/22_if_test3.sy",
+                // "./test/testcase/basic/23_if_test4.sy",
+                // "./test/testcase/basic/25_while_if.sy",
+                // "./test/testcase/basic/26_while_test1.sy",
+                // "./test/testcase/basic/27_while_test2.sy",
+                // "./test/testcase/basic/29_break.sy",
+                // "./test/testcase/basic/30_continue.sy",
+                // "./test/testcase/basic/31_while_if_test1.sy",
+                // "./test/testcase/basic/32_while_if_test2.sy",
+                // "./test/testcase/basic/33_while_if_test3.sy",
+                // "./test/testcase/basic/35_op_priority1.sy",
+                // "./test/testcase/basic/36_op_priority2.sy",
+                // "./test/testcase/basic/37_op_priority3.sy",
+                // "./test/testcase/basic/40_unary_op.sy",
+                // "./test/testcase/basic/41_unary_op2.sy",
+                // "./test/testcase/basic/42_empty_stmt.sy",
+                // "./test/testcase/basic/45_comment1.sy",
+                // "./test/testcase/function/28_while_test3.sy",
+                // "./test/testcase/function/34_arr_expr_len.sy",
+                // "./test/testcase/function/38_op_priority4.sy",
+                // "./test/testcase/function/39_op_priority5.sy",
+                // "./test/testcase/function/43_logi_assign.sy",
+                // "./test/testcase/function/47_hex_oct_add.sy",
+                // "./test/testcase/function/48_assign_complex_expr.sy",
+                // "./test/testcase/function/49_if_complex_expr.sy",
+                // "./test/testcase/function/50_short_circuit.sy",
+                // "./test/testcase/function/51_short_circuit3.sy",
+                // "./test/testcase/function/52_scope.sy",
+                // "./test/testcase/function/55_sort_test1.sy",
+                // "./test/testcase/function/62_percolation.sy",
+                // "./test/testcase/function/64_calculator.sy",
+                // "./test/testcase/function/66_exgcd.sy",
+                // "./test/testcase/function/70_dijkstra.sy",
+                // "./test/testcase/function/73_int_io.sy",
+                // "./test/testcase/function/78_side_effect.sy",
+                // "./test/testcase/function/79_var_name.sy",
+                // "./test/testcase/function/89_many_globals.sy",
+                "./test/testcase/function/95_float.sy",
+                // "-e",
+                // "-s2",
+                // "-o",
+                // "./myTest/test.ir",
+                "-S",
+                "-o",
+                "./myTest/test.s"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "miDebuggerPath": "/usr/bin/gdb",
+            "preLaunchTask": "build",
+            "logging": {
+                "engineLogging": true
+            }
+        }
+    ]
+}
+```
+
+最后使用F5快捷键就可以开启调试了，具体的调试方法我就不介绍了，自己STFW吧。
+
+
+
+## 四、实验框架目录说明
+
+```
+
 ```
 
 
 
-### 拉取镜像
+##  五、实验一
 
-```bash
-docker pull frankd35/demo:v3
-```
+实验1包含两个部分，词法分析和语法分析
 
 
-
-### 挂载容器
-
-```bash
-docker run -it -v ~/compilerLab:/coursegrader frankd35/demo:v3
-```
 
 
 

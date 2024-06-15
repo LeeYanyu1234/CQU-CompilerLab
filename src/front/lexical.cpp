@@ -461,8 +461,7 @@ std::vector<frontend::Token> frontend::Scanner::run()
             tokens.push_back(tk);
 #ifdef DEBUG_SCANNER
 #include <iostream>
-            std::cout
-                << "token: " << toString(tk.type) << "\t" << tk.value << std::endl;
+            std::cout << "token: " << toString(tk.type) << "\t" << tk.value << std::endl;
 #endif
         }
     }
