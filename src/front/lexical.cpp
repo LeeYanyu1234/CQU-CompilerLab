@@ -43,7 +43,7 @@ std::set<std::string> frontend::keywords = {"const", "int", "float", "if", "else
 
 /**
  * @brief 预处理器，去除注释，单行和多行
- * @param  fin
+ * @param fin 输入文件流
  * @return std::string
  * @author LiHaoxuan (leehaoxuan.1234@gmail.com)
  * @date 2024-05-14

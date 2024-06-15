@@ -40,10 +40,10 @@ add_library(Backend ${BACKEND_SRC})
 
 # 为了 debug 方便，你可以选择通过源文件来构建 IR 测评机，但是请以链接静态库文件的方式去跑分（为了防止你们修改测评机，在OJ上我们会采取此方式）
 # --------------------- from src ---------------------
-aux_source_directory(./src/ir IR_SRC)
-add_library(IR ${IR_SRC})
-aux_source_directory(./src/tools TOOLS_SRC)
-add_library(Tools ${TOOLS_SRC})
+# aux_source_directory(./src/ir IR_SRC)
+# add_library(IR ${IR_SRC})
+# aux_source_directory(./src/tools TOOLS_SRC)
+# add_library(Tools ${TOOLS_SRC})
 # --------------------- from src ---------------------
 
 
