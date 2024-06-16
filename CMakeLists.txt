@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.10)
-project(compiler)
+cmake_minimum_required(VERSION 3.10) # 指定CMake的最低版本要求
+project(compiler) # 定义项目名称
 
 # compile flags
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 14) # 设置C++标准为C++14
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")  # 调试信息
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall")  # 调试信息和所有警告
 
@@ -48,7 +48,7 @@ add_library(Backend ${BACKEND_SRC})
 
 
 # executable
-add_executable(compiler main.cpp)
+add_executable(compiler main.cpp) # 创建一个名为compiler的可执行文件，源文件是main.cpp
 
 # link
 # every lib should be linked with [compiler]

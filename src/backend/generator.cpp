@@ -227,7 +227,7 @@ void backend::Generator::gen_func(const ir::Function &func)
 void backend::Generator::gen_instr(const ir::Instruction &inst, int idx, int argCnt)
 {
     // TODO; lab3todo11 gen_instr
-    fout << "#\t" << std::to_string(idx) << ": " << inst.draw() << "\n";
+    // fout << "#\t" << std::to_string(idx) << ": " << inst.draw() << "\n";
     ir::Operator op = inst.op;
     if (op == ir::Operator::_return)
         genInstReturn(inst);
