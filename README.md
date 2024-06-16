@@ -499,7 +499,7 @@ DFA状态机的任务就是对预处理过后的源程序进行分词。DFA会�
 
   > :warning:注意
   >
-  > 你会发现实验指导书说提供了`sylib.c`的参考实现，但是你在代码框架里面掘地三尺也只能找到一个`sylib.h`，根本找不到实现。别急，我找到了，在我的代码的`/coursegrader/src/tools`路径下你可以看到，或者你也可以去看看官方提供的[sylib.c](https://gitlab.eduxiji.net/csc1/nscscc/compiler2022/-/blob/master/公开样例与运行时库/sylib.c)。
+  > 你会发现实验指导书说提供了`sylib.c`的参考实现，但是你在代码框架里面掘地三尺也只能找到一个`sylib.h`，根本找不到实现。别急，我找到了，在我的代码的`/coursegrader/src/tools`路径下你可以看到，或者你也可以去看看官方提供的[sylib.c](https://gitlab.eduxiji.net/csc1/nscscc/compiler2022/-/blob/master/公开样例与运行时库/sylib.c)。这个东西是很有用的，实验三你就知道了。
 
 - 全局变量的处理。在`get_ir_program`函数中分析`CompUnit`之后还需要手动完成对`globalVal`的添加，作用域0中的变量即为全局变量。然后还需要手动创建一个名为`global`的函数来完成对全局变量的初始化。
 
@@ -511,9 +511,225 @@ DFA状态机的任务就是对预处理过后的源程序进行分词。DFA会�
 
 
 
+## 七、实验三
+
+实验三的目标是由实验二的中间表示IR经过目标代码生成，生成可以与sylib.a链接的risc-v汇编。
+
+到了实验三你就会发现，看完实验指导书的你依然不知道一个可以运行的riscv汇编代码到底应该长啥样，指导书只说了一些很笼统的东西，具体的实现方案可以说是一句没提。
+
+> [!tip]
+>
+> 这里有两种方法可以学习riscv汇编：
+>
+> - 利用标准的riscv编译器编译源代码，得到标准的riscv汇编程序。如果我们的测试点里面调用了运行时库，记得先把sylib.c文件的里面复制到源码里面去，这样编译出来的汇编指令才是可以运行的。然后你就可以对着标准答案来翻译自己的IR了。指令是这样的：
+>
+>   ```bash
+>   cd /coursegrader/myTest
+>   riscv32-unknown-linux-gnu-gcc -S testref.c -o testref.s
+>   riscv32-unknown-linux-gnu-gcc testref.s sylib-riscv-linux.a -o testref.out
+>   qemu-riscv32.sh testref.out
+>   cd /coursegrader/test
+>   ```
+>
+>   `testref.s`里面就是标准汇编代码。
+>
+> - RTFM。指导书中反复提到了riscv ABI，但是它提供的资料里面根本没有riscv ABI。我在网上花了很多精力找到了，可惜是纯英文的，还不如参考上一个方法的源代码+问GPT来的快。如果有兴趣也可以去`docs`文件夹里面找出来看看。
+
+下面来介绍一下riscv汇编代码的基本组成：
+
+> [!note]
+>
+> 需要注意的是，不同版本的`riscv32-unknown-linux-gnu-gcc`生成的汇编代码是不同的，现在的大版本号已经到13了，而docker里面的大版本号还是9。下面是按照docker里面的版本来的。
+
+1. ` .option nopic`：每一个汇编程序的第一行都应该有这个，作用是指定生成的代码与位置无关，可以在内存任意位置运行，虽然不加也没有任何影响就是了。
+
+2. ` .section   .data`：切换代码段到`.data`，这个字段用于储存已经初始化的全局变量。一般需要与` .align  2`配套使用，据说可以通过对齐提高运行速度。下面是已初始化的全局普通整型变量声明：
+
+   ```assembly
+   	.global	a_Scp0 # 变量名
+   	.type	a_Scp0, @object # 变量类型，可有可无
+   	.size	a_Scp0, 4 # 变量大小，按字节计
+   a_Scp0: # 变量地址标签
+   	.word	3 # 填充一个整型值3
+   ```
+
+   如果是整型数组全局变量，依次用`.word`填充初值即可：
+
+   ```assembly
+   	.global	a_Scp0
+   	.type	a_Scp0, @object
+   	.size	a_Scp0, 20
+   a_Scp0:
+   	.word	0
+   	.word	1
+   	.word	2
+   	.word	3
+   	.word	4
+   ```
+
+   如果是浮点型：
+
+   ```assembly
+   	.global	a_Scp0
+   	.type	a_Scp0, @object
+   	.size	a_Scp0, 4
+   a_Scp0:
+   	.float	1.2 # 填充一个浮点型值1.2
+   ```
+
+3. 未初始化的全局变量：
+
+   ```assembly
+   	.comm	h_Scp0, 4, 4 # 普通变量
+   	.comm	array_Scp0, 440, 4 # 数组
+   ```
+
+   这里的`.comm`伪指令会自动把变量放至`.bss`段，这段变量值在每次启动时会被自动初始化为0。这也是全局变量会默认初始化为0的原因。
+
+4. ` .section   .text`：切换代码段到`.text`，这个字段用于代码。一般需要与` .align  1`配套使用，据说可以通过对齐提高运行速度。下面是一个函数的定义：
+
+   ```assembly
+   	.global	main # 函数名
+   	.type	main, @function # 函数类型
+   main: # 函数标签地址
+   	addi	sp, sp, -4 # 为函数开辟栈空间
+   	sw	ra, 0(sp) # 保存ra寄存器，一定要保存，不然会不能返回
+   	li	a0, 2
+   	lw	ra, 0(sp)
+   	addi	sp,sp,4
+   	jr	ra # 结束函数调用，跳转到ra地址
+   	.size	main, .-main # 计算函数需要的大小
+   ```
+
+   > :warning:注意
+   >
+   > 不要随意删除`.size	main, .-main`，这个东西看似删了也能跑，但是没有了它只会默认分配一个比较小的默认栈空间，可能会导致栈空间大小不足。
+
+下面说明一下我的IR是怎么翻译成riscv汇编的：
+
+1. 寄存器分配：我采用的原则是写死寄存器，没有寄存器分配策略。每一条指令都先需要把操作数加载到指定寄存器，然后完成运算后又存入栈。~~别问为什么不努力，问就是计院的期末周来不及了。~~当然这样除了需要大量的lw和sw之外也有好处，那就是处理起来非常简单。虽然debug的时候会因为代码太多很难看懂。先自信一手，抛开性能，我是成功的。
+
+2. IR翻译：按照IR的顺序对应翻译成一条或多条riscv汇编指令。由于数据的传输是通过栈来完成的，所以每一条IR指令之间基本上都是独立的。
+
+3. 函数栈空间分配：通过扫描这个函数的形参和所有指令用到的操作数，可以为这个函数生成一张符号表，所有操作数都有对应的栈空间，这样就可以完成包括临时变量在内的栈传参。抛开栈空间需要太多，我是成功的。
+
+4. 函数传参：如果参数个数小于等于8，那么通过寄存器传参，由调用者在调用前把所有需要的参数依次存入参数寄存器。函数被调用后第一件事就是把所有的参数全部存入栈空间，这样参数就可以作为局部变量处理。如果参数的个数大于8，那么还需要通过栈传参，为超过8的部分新开辟一部分栈空间，然后依次入栈。函数被调用后第一件事就是把所有的参数全部存入栈空间，这样参数就可以作为局部变量处理，区别在于需要计算超量参数的对应地址。
+
+5. 浮点立即数的加载：riscv中的浮点数是没有类似于整数立即数`li`这样的加载方法的，只能曲线救国。这里有两种加载方法，一种是创建对应的全局变量，通过`.float`填充浮点立即数，然后加载来使用。另一种就是通过`li`，不过需要自己完成浮点立即数到整数的转换，下面是我编写的转换程序：
+
+   ```c++
+   float fli = std::stof(op.name);
+   uint32_t hex;
+   std::memcpy(&hex, &fli, sizeof(hex));
+   fout << "\tli\tt5, " << hex << "\n";
+   ```
+
+> [!warning]
+>
+> 这里还有几个点需要注意：
+>
+> 1. 浮点数需要使用特定的浮点指令，绝大部分浮点指令操作的寄存器必须是浮点寄存器，但是有几个逻辑浮点指令的目标寄存器必须是整数寄存器。
+> 2. 参数中的数组和局部变量中的数组是有区别的，你需要判断数组是参数传来的，还是局部变量创建的。
+
+> [!tip]
+>
+> 这个实验三写出来还是有点汗颜的，别人都是空间换时间，要不就是时间换空间，总之就是拼了命地节约空间和时间，只有我是拿着空间和时间换程序的难易度。哈哈，但是你先别笑，你把实验三跑通了再说😎。
 
 
-### 修改过源代码，需要重新编译执行
+
+## 八、实验四
+
+实验四是完成编译优化，这里我只完成了常量传播优化。希望后面的同学可以努努力，完成寄存器分配乃至更高级的优化吧。
+
+常量传播优化是在语义分析阶段完成的，我修改了STE的结构，增加了两个属性，一个是`isConst`表示这个变量是不是常量，另一个是`val`记录这个常量的值。
+
+在常量声明的时候需要向符号表中将`isConst`置1，然后存入值。在使用时则是判断这个值是不是常量，如果是常量，由编译器就进行计算，合并常量，不需要到程序中计算。下面给出一个`AddExp`进行常量合并的示例：
+
+```c++
+    //* 如果表达式中有常量
+    if (mulExp1->t == Type::IntLiteral || mulExp1->t == Type::FloatLiteral)
+    {
+        for (int i = 2; i < root->children.size(); i += 2)
+        {
+            vector<Instruction *> mulInst;
+            GET_NODE_PTR(Term, term, i - 1)
+            GET_NODE_PTR(MulExp, mulExp2, i)
+            analyzeMulExp(mulExp2, mulInst);
+            if (mulExp2->t == Type::IntLiteral || mulExp2->t == Type::FloatLiteral)
+            {
+                if (mulExp1->t == Type::IntLiteral && mulExp2->t == Type::IntLiteral)
+                {
+                    if (term->token.type == TokenType::PLUS)
+                    {
+                        mulExp1->v = TOS(std::stoi(mulExp1->v) + std::stoi(mulExp2->v));
+                    }
+                    else if (term->token.type == TokenType::MINU)
+                    {
+                        mulExp1->v = TOS(std::stoi(mulExp1->v) - std::stoi(mulExp2->v));
+                    }
+                    else
+                        assert(0 && "AddExp op error");
+                }
+                else if (mulExp1->t == Type::IntLiteral && mulExp2->t == Type::FloatLiteral)
+                {
+                    mulExp1->t = Type::FloatLiteral;
+                    if (term->token.type == TokenType::PLUS)
+                    {
+                        mulExp1->v = TOS(std::stoi(mulExp1->v) + std::stof(mulExp2->v));
+                    }
+                    else if (term->token.type == TokenType::MINU)
+                    {
+                        mulExp1->v = TOS(std::stoi(mulExp1->v) - std::stof(mulExp2->v));
+                    }
+                    else
+                        assert(0 && "AddExp op error");
+                }
+                else if (mulExp1->t == Type::FloatLiteral && mulExp2->t == Type::IntLiteral)
+                {
+                    if (term->token.type == TokenType::PLUS)
+                    {
+                        mulExp1->v = TOS(std::stof(mulExp1->v) + std::stoi(mulExp2->v));
+                    }
+                    else if (term->token.type == TokenType::MINU)
+                    {
+                        mulExp1->v = TOS(std::stof(mulExp1->v) - std::stoi(mulExp2->v));
+                    }
+                    else
+                        assert(0 && "AddExp op error");
+                }
+                else
+                {
+                    if (term->token.type == TokenType::PLUS)
+                    {
+                        mulExp1->v = TOS(std::stof(mulExp1->v) + std::stof(mulExp2->v));
+                    }
+                    else if (term->token.type == TokenType::MINU)
+                    {
+                        mulExp1->v = TOS(std::stof(mulExp1->v) - std::stof(mulExp2->v));
+                    }
+                    else
+                        assert(0 && "AddExp op error");
+                }
+            }
+            else
+            {
+                idx = i;
+                break;
+            }
+        }
+    }
+
+    if ((mulExp1->t == Type::IntLiteral || mulExp1->t == Type::FloatLiteral) && idx == -1) // 如果表达式只有常量
+    {
+        COPY_EXP_NODE(mulExp1, root)
+    }
+```
+
+
+
+## 九、快速指令
+
+### 9.1 修改过源代码，需要重新编译执行
 
 ```bash
 cd /coursegrader
@@ -528,7 +744,7 @@ cd /coursegrader
 
 
 
-### 使用python脚本测试（词法分析测试）
+### 9.2 使用python脚本测试（词法分析测试）
 
 ```bash
 cd /coursegrader/test
@@ -539,7 +755,7 @@ python3 test.py s0
 
 
 
-### 使用python脚本测试（语法分析测试）
+### 9.3 使用python脚本测试（语法分析测试）
 
 ```bash
 cd /coursegrader/test
@@ -550,7 +766,7 @@ python3 test.py s1
 
 
 
-### 使用python脚本测试（语义分析测试）
+### 9.4 使用python脚本测试（语义分析测试）
 
 ```bash
 cd /coursegrader/test
@@ -561,7 +777,7 @@ python3 test.py s2
 
 
 
-### 使用python脚本测试（目标代码生成测试）
+### 9.5 使用python脚本测试（目标代码生成测试）
 
 ```bash
 cd /coursegrader/test
@@ -572,7 +788,7 @@ python3 test.py S
 
 
 
-### 单个测试点测试
+### 9.6 单个测试点测试
 
 ```bash
 cd /coursegrader
@@ -590,31 +806,12 @@ qemu-riscv32.sh test.out
 
 
 
+### 9.7 生成标准汇编代码
+
 ```bash
 cd /coursegrader/myTest
 riscv32-unknown-linux-gnu-gcc -S testref.c -o testref.s
 riscv32-unknown-linux-gnu-gcc testref.s sylib-riscv-linux.a -o testref.out
 qemu-riscv32.sh testref.out
 cd /coursegrader/test
-
-```
-
-```
-10
-0x1.999999999999ap-4 0x1.999999999999ap-3 0x1.3333333333333p-2 0x1.999999999999ap-2 0x1.0000000000000p-1
-0x1.3333333333333p-1 0x1.6666666666666p-1 0x1.999999999999ap-1 0x1.ccccccccccccdp-1 0x1.0000000000000p+0
-0x1.199999999999ap+0
-0x1.199999999999ap+1
-0x1.a666666666666p+1
-0x1.199999999999ap+2
-0x1.6000000000000p+2
-0x1.a666666666666p+2
-0x1.ecccccccccccdp+2
-0x1.199999999999ap+3
-0x1.3cccccccccccdp+3
-0x1.4333333333333p+3
-
-cd /coursegrader/myTest
-riscv32-unknown-linux-gnu-gcc test.s sylib-riscv-linux.a -o test.out
-qemu-riscv32.sh test.out
 ```
