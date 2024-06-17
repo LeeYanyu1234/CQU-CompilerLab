@@ -170,7 +170,6 @@ namespace frontend
 
     struct InitVal : AstNode
     {
-        bool is_computable = false;
         string v; // 向下传递变量名
         Type t;   // 向下传递变量类型
 
@@ -224,16 +223,14 @@ namespace frontend
      */
     struct Exp : AstNode
     {
-        bool is_computable = false; // 节点以下子树是否可以化简为常数，用于常数合并优化
-        string v;                   // 记录重命名后的变量名/临时变量名/常数字符串
-        Type t;                     // 该表达式计算得到的类型
+        string v; // 记录重命名后的变量名/临时变量名/常数字符串
+        Type t;   // 该表达式计算得到的类型
 
         Exp(AstNode *p = nullptr);
     };
 
     struct Cond : AstNode
     {
-        bool is_computable = false;
         string v;
         Type t;
 
@@ -249,7 +246,6 @@ namespace frontend
     struct LVal : AstNode
     {
         // TODO; lab2todo31 struct LVal
-        bool is_computable = false;
         string v;      // 左值表达式的值
         Type t;        // 左值表达式的类型
         bool isPtr;    // 左值是否是指针
@@ -265,7 +261,6 @@ namespace frontend
      */
     struct Number : AstNode
     {
-        bool is_computable = true;
         string v; // 数值的字面量
         Type t;   // 数值节点的类型 int/float
 
@@ -279,7 +274,6 @@ namespace frontend
      */
     struct PrimaryExp : AstNode
     {
-        bool is_computable = false;
         string v;
         Type t;
 
@@ -294,7 +288,6 @@ namespace frontend
      */
     struct UnaryExp : AstNode
     {
-        bool is_computable = false;
         string v;
         Type t;
 
@@ -316,7 +309,6 @@ namespace frontend
 
     struct MulExp : AstNode
     {
-        bool is_computable = false;
         string v;
         Type t;
 
@@ -325,7 +317,6 @@ namespace frontend
 
     struct AddExp : AstNode
     {
-        bool is_computable = false;
         string v;
         Type t;
 
@@ -334,7 +325,6 @@ namespace frontend
 
     struct RelExp : AstNode
     {
-        bool is_computable = false;
         string v;
         Type t = Type::Int;
 
@@ -343,7 +333,6 @@ namespace frontend
 
     struct EqExp : AstNode
     {
-        bool is_computable = false;
         string v;
         Type t = Type::Int;
 
@@ -352,7 +341,6 @@ namespace frontend
 
     struct LAndExp : AstNode
     {
-        bool is_computable = false;
         string v;
         Type t = Type::Int;
 
@@ -361,7 +349,6 @@ namespace frontend
 
     struct LOrExp : AstNode
     {
-        bool is_computable = false;
         string v;
         Type t = Type::Int;
 
@@ -370,7 +357,6 @@ namespace frontend
 
     struct ConstExp : AstNode
     {
-        bool is_computable = true;
         string v; // 数值，一定是非负整数
         Type t;
 
