@@ -17,7 +17,7 @@
 #include "front/token.h"
 
 #include <vector>
-#include <unordered_set>
+#include <set>
 
 namespace frontend
 {
@@ -109,37 +109,37 @@ namespace frontend
         // bool parseConstExp(ConstExp *root);
 
         // 分支判断函数，判断是否存在这一语法分支
-        std::unordered_set<frontend::TokenType> matchCompUnit();
-        std::unordered_set<frontend::TokenType> matchDecl();
-        std::unordered_set<frontend::TokenType> matchConstDecl();
-        std::unordered_set<frontend::TokenType> matchBType();
-        std::unordered_set<frontend::TokenType> matchConstDef();
-        std::unordered_set<frontend::TokenType> matchConstInitVal();
-        std::unordered_set<frontend::TokenType> matchVarDecl();
-        std::unordered_set<frontend::TokenType> matchVarDef();
-        std::unordered_set<frontend::TokenType> matchInitVal();
-        std::unordered_set<frontend::TokenType> matchFuncDef();
-        std::unordered_set<frontend::TokenType> matchFuncType();
-        std::unordered_set<frontend::TokenType> matchFuncFParam();
-        std::unordered_set<frontend::TokenType> matchFuncFParams();
-        std::unordered_set<frontend::TokenType> matchBlock();
-        std::unordered_set<frontend::TokenType> matchBlockItem();
-        std::unordered_set<frontend::TokenType> matchStmt();
-        std::unordered_set<frontend::TokenType> matchExp();
-        std::unordered_set<frontend::TokenType> matchCond();
-        std::unordered_set<frontend::TokenType> matchLVal();
-        std::unordered_set<frontend::TokenType> matchNumber();
-        std::unordered_set<frontend::TokenType> matchPrimaryExp();
-        std::unordered_set<frontend::TokenType> matchUnaryExp();
-        std::unordered_set<frontend::TokenType> matchUnaryOp();
-        std::unordered_set<frontend::TokenType> matchFuncRParams();
-        std::unordered_set<frontend::TokenType> matchMulExp();
-        std::unordered_set<frontend::TokenType> matchAddExp();
-        std::unordered_set<frontend::TokenType> matchRelExp();
-        std::unordered_set<frontend::TokenType> matchEqExp();
-        std::unordered_set<frontend::TokenType> matchLAndExp();
-        std::unordered_set<frontend::TokenType> matchLOrExp();
-        std::unordered_set<frontend::TokenType> matchConstExp();
+        std::set<frontend::TokenType> matchCompUnit();
+        std::set<frontend::TokenType> matchDecl();
+        std::set<frontend::TokenType> matchConstDecl();
+        std::set<frontend::TokenType> matchBType();
+        std::set<frontend::TokenType> matchConstDef();
+        std::set<frontend::TokenType> matchConstInitVal();
+        std::set<frontend::TokenType> matchVarDecl();
+        std::set<frontend::TokenType> matchVarDef();
+        std::set<frontend::TokenType> matchInitVal();
+        std::set<frontend::TokenType> matchFuncDef();
+        std::set<frontend::TokenType> matchFuncType();
+        std::set<frontend::TokenType> matchFuncFParam();
+        std::set<frontend::TokenType> matchFuncFParams();
+        std::set<frontend::TokenType> matchBlock();
+        std::set<frontend::TokenType> matchBlockItem();
+        std::set<frontend::TokenType> matchStmt();
+        std::set<frontend::TokenType> matchExp();
+        std::set<frontend::TokenType> matchCond();
+        std::set<frontend::TokenType> matchLVal();
+        std::set<frontend::TokenType> matchNumber();
+        std::set<frontend::TokenType> matchPrimaryExp();
+        std::set<frontend::TokenType> matchUnaryExp();
+        std::set<frontend::TokenType> matchUnaryOp();
+        std::set<frontend::TokenType> matchFuncRParams();
+        std::set<frontend::TokenType> matchMulExp();
+        std::set<frontend::TokenType> matchAddExp();
+        std::set<frontend::TokenType> matchRelExp();
+        std::set<frontend::TokenType> matchEqExp();
+        std::set<frontend::TokenType> matchLAndExp();
+        std::set<frontend::TokenType> matchLOrExp();
+        std::set<frontend::TokenType> matchConstExp();
 
         void undo(int _lastIndex, AstNode *_res, int _curChildrenNums); // 撤销函数，撤销匹配
 
