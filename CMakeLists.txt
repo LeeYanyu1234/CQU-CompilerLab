@@ -1,18 +1,18 @@
-cmake_minimum_required(VERSION 3.10)
-project(compiler)
+cmake_minimum_required(VERSION 3.10) # 指定CMake的最低版本要求
+project(compiler) # 定义项目名称
 
 # compile flags
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")  # 调试信息和所有警告
+set(CMAKE_CXX_STANDARD 14) # 设置C++标准为C++14
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")  # 调试信息
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall")  # 调试信息和所有警告
 
 set(CMAKE_C_COMPILER "/usr/bin/x86_64-linux-gnu-gcc-7")
 set(CMAKE_CXX_COMPILER "/usr/bin/x86_64-linux-gnu-g++-7")
 
 # debug flags
-add_definitions(-DDEBUG_DFA)
-add_definitions(-DDEBUG_SCANNER)
-add_definitions(-DDEBUG_PARSER)
+# add_definitions(-DDEBUG_DFA)
+# add_definitions(-DDEBUG_SCANNER)
+# add_definitions(-DDEBUG_PARSER)
 
 # output settings
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
@@ -28,12 +28,11 @@ add_library(jsoncpp ./src/third_party/jsoncpp/jsoncpp.cpp)
 # --------------------- from lib ---------------------
 # link libxx.a
 # u should rename libxx-x86-win.a or libxx-x86-linux.a to libxx.a according to ur own platform
-link_directories(./lib)
+# link_directories(./lib)
 # --------------------- from lib ---------------------
 
 # build library
 # every src file directory should be compile into a lib
-
 aux_source_directory(./src/front FRONT_SRC)
 add_library(Front ${FRONT_SRC})
 aux_source_directory(./src/backend BACKEND_SRC)
@@ -49,7 +48,7 @@ add_library(Tools ${TOOLS_SRC})
 
 
 # executable
-add_executable(compiler main.cpp)
+add_executable(compiler main.cpp) # 创建一个名为compiler的可执行文件，源文件是main.cpp
 
 # link
 # every lib should be linked with [compiler]

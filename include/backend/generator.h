@@ -50,7 +50,7 @@ namespace backend
 
         Generator(ir::Program &, std::ofstream &);
 
-        int matchFile();
+        // int matchFile();
 
         // reg allocate api
         // rv::rvREG getRd(ir::Operand);
