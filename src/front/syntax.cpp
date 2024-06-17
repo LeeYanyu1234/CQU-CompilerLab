@@ -6,12 +6,8 @@ using frontend::Parser;
 
 // #define DEBUG_PARSER
 #define TODO assert(0 && "todo")
-#define CUR_TOKEN_IS(tk_type) (token_stream[index].type == TokenType::tk_type)
-#define PARSE_TOKEN(tk_type) root->children.push_back(parseTerm(root, TokenType::tk_type))
-#define PARSE(name, type)       \
-    auto name = new type(root); \
-    assert(parse##type(name));  \
-    root->children.push_back(name);
+#define saveChildrenNum int curChildrenNums = res->children.size()
+#define saveIndex int lastIndex = index
 
 /**
  * *文法规则：
@@ -70,15 +66,21 @@ void Parser::log(AstNode *node)
 }
 
 // TODO; lab1todo10
-// 1 编译单元 CompUnit -> (Decl | FuncDef) [CompUnit]
+/**
+ * @brief 1 编译单元 CompUnit -> (Decl | FuncDef) [CompUnit]
+ * @param root
+ * @return frontend::CompUnit*
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 frontend::CompUnit *Parser::parseCompUnit(AstNode *root)
 {
     CompUnit *res = new CompUnit(root); // 构造根节点
 
-    bool isDecl = false;                        // 标记Decl分支
-    bool isFuncDef = false;                     // 标记FuncDef分支
-    int lastIndex = index;                      // 记录当前index
-    int curChildrenNums = res->children.size(); // 记录进入分支前的children数量
+    bool isDecl = false;    // 标记Decl分支
+    bool isFuncDef = false; // 标记FuncDef分支
+    saveIndex;              // 记录当前index
+    saveChildrenNum;        // 记录进入分支前的children数量
 
     if (matchDecl().count(token_stream[index].type)) // 匹配Decl
     {
@@ -99,168 +101,135 @@ frontend::CompUnit *Parser::parseCompUnit(AstNode *root)
     return res;
 }
 
-// 2 声明 Decl -> ConstDecl | VarDecl
+/**
+ * @brief 2 声明 Decl -> ConstDecl | VarDecl
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseDecl(AstNode *root)
 {
     Decl *res = new Decl(root);
-
     bool isConstDecl = false;
     bool isVarDecl = false;
-    int lastIndex = index;
-    int curChildrenNums = res->children.size();
-
     if (matchConstDecl().count(token_stream[index].type)) // 匹配ConstDecl
-    {
         isConstDecl = parseConstDecl(res);
-        if (!isConstDecl)
-            undo(lastIndex, res, curChildrenNums);
-    }
-
-    if (!isConstDecl && matchVarDecl().count(token_stream[index].type)) // 匹配VarDecl
+    else if (matchVarDecl().count(token_stream[index].type)) // 匹配VarDecl
         isVarDecl = parseVarDecl(res);
-
     if (!isConstDecl && !isVarDecl)
         return false;
-
     return true;
 }
 
-// 3 常量声明 ConstDecl -> 'const' BType ConstDef { ',' ConstDef } ';'
+/**
+ * @brief 3 常量声明 ConstDecl -> 'const' BType ConstDef { ',' ConstDef } ';'
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseConstDecl(AstNode *root)
 {
     ConstDecl *res = new ConstDecl(root);
-
-    if (token_stream[index].type != frontend::TokenType::CONSTTK) // 匹配const
-        return false;
     new Term(token_stream[index++], res);
-
-    if (!parseBType(res)) // 匹配BType
-        return false;
-
-    if (!parseConstDef(res)) // 匹配ConstDef
-        return false;
-
+    parseBType(res);                                               // 匹配BType
+    parseConstDef(res);                                            // 匹配ConstDef
     while (token_stream[index].type == frontend::TokenType::COMMA) // 匹配{ ',' ConstDef }
     {
         new Term(token_stream[index++], res);
-        if (!parseConstDef(res))
-            return false;
+        parseConstDef(res);
     }
-
-    if (token_stream[index].type != frontend::TokenType::SEMICN) // 匹配';'
-        return false;
     new Term(token_stream[index++], res);
-
     return true;
 }
 
-// 4 基本类型 BType -> 'int' | 'float'
+/**
+ * @brief 4 基本类型 BType -> 'int' | 'float'
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseBType(AstNode *root)
 {
     BType *res = new BType(root);
-
     if (token_stream[index].type == frontend::TokenType::INTTK) // 匹配'int'
         new Term(token_stream[index++], res);
     else if (token_stream[index].type == frontend::TokenType::FLOATTK) // 匹配'float'
         new Term(token_stream[index++], res);
-    else
-        return false;
-
     return true;
 }
 
-// 5 常量定义 ConstDef -> Ident { '[' ConstExp ']' } '=' ConstInitVal
+/**
+ * @brief 5 常量定义 ConstDef -> Ident { '[' ConstExp ']' } '=' ConstInitVal
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseConstDef(AstNode *root)
 {
     ConstDef *res = new ConstDef(root);
-
-    if (token_stream[index].type != frontend::TokenType::IDENFR) // 匹配Ident
-        return false;
     new Term(token_stream[index++], res);
-
     while (token_stream[index].type == frontend::TokenType::LBRACK) // 匹配{ '[' ConstExp ']' }
     {
         new Term(token_stream[index++], res);
-        if (!parseConstExp(res))
-            return false;
-        if (token_stream[index].type != frontend::TokenType::RBRACK)
-            return false;
+        parseConstExp(res);
         new Term(token_stream[index++], res);
     }
-
-    if (token_stream[index].type != frontend::TokenType::ASSIGN) // 匹配'='
-        return false;
     new Term(token_stream[index++], res);
-
-    if (!parseConstInitVal(res)) // 匹配ConstInitVal
-        return false;
-
+    parseConstInitVal(res); // 匹配ConstInitVal
     return true;
 }
 
-// 6 常量初值 ConstInitVal -> ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
+/**
+ * @brief 6 常量初值 ConstInitVal -> ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseConstInitVal(AstNode *root)
 {
     ConstInitVal *res = new ConstInitVal(root);
-
-    bool isConstExp = false;
-    bool isLBrace = false;
-    int lastIndex = index;
-    int curChildrenNums = res->children.size();
-
     if (matchConstExp().count(token_stream[index].type)) // 匹配ConstExp
-    {
-        isConstExp = parseConstExp(res);
-        if (!isConstExp)
-            undo(lastIndex, res, curChildrenNums);
-    }
-
-    if (!isConstExp && token_stream[index].type == frontend::TokenType::LBRACE) // 匹配'{' [ ConstInitVal { ',' ConstInitVal } ] '}'
+        parseConstExp(res);
+    if (token_stream[index].type == frontend::TokenType::LBRACE) // 匹配'{' [ ConstInitVal { ',' ConstInitVal } ] '}'
     {
         new Term(token_stream[index++], res);
         if (matchConstInitVal().count(token_stream[index].type))
         {
-            if (!parseConstInitVal(res))
-                return false;
-
+            parseConstInitVal(res);
             while (token_stream[index].type == frontend::TokenType::COMMA)
             {
                 new Term(token_stream[index++], res);
-                if (!parseConstInitVal(res))
-                    return false;
+                parseConstInitVal(res);
             }
         }
-        if (token_stream[index].type != frontend::TokenType::RBRACE)
-            return false;
         new Term(token_stream[index++], res);
-
-        isLBrace = true;
     }
-
-    if (!isConstExp && !isLBrace)
-        return false;
 
     return true;
 }
 
-// 7 变量声明 VarDecl -> BType VarDef { ',' VarDef } ';'
+/**
+ * @brief 7 变量声明 VarDecl -> BType VarDef { ',' VarDef } ';'
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseVarDecl(AstNode *root)
 {
     VarDecl *res = new VarDecl(root);
-
-    if (!parseBType(res)) // 匹配BType
-        return false;
-
-    if (!parseVarDef(res)) // 匹配VarDef
-        return false;
-
+    parseBType(res);                                               // 匹配BType
+    parseVarDef(res);                                              // 匹配VarDef
     while (token_stream[index].type == frontend::TokenType::COMMA) // 匹配{ ',' VarDef }
     {
         new Term(token_stream[index++], res);
-        if (!parseVarDef(res))
-            return false;
+        parseVarDef(res);
     }
-
     if (token_stream[index].type != frontend::TokenType::SEMICN) // 匹配';'
         return false;
     new Term(token_stream[index++], res);
@@ -268,115 +237,88 @@ bool Parser::parseVarDecl(AstNode *root)
     return true;
 }
 
-// 8 变量定义 VarDef -> Ident { '[' ConstExp ']' } [ '=' InitVal ]
+/**
+ * @brief 8 变量定义 VarDef -> Ident { '[' ConstExp ']' } [ '=' InitVal ]
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseVarDef(AstNode *root)
 {
     VarDef *res = new VarDef(root);
-
-    if (token_stream[index].type != frontend::TokenType::IDENFR) // 匹配Ident
-        return false;
     new Term(token_stream[index++], res);
-
     while (token_stream[index].type == frontend::TokenType::LBRACK) // 匹配{ '[' ConstExp ']' }
     {
         new Term(token_stream[index++], res);
-        if (!parseConstExp(res))
-            return false;
-
-        if (token_stream[index].type != frontend::TokenType::RBRACK)
-            return false;
+        parseConstExp(res);
         new Term(token_stream[index++], res);
     }
-
     if (token_stream[index].type == frontend::TokenType::ASSIGN) // 匹配[ '=' InitVal ]
     {
         new Term(token_stream[index++], res);
-        if (!parseInitVal(res))
-            return false;
+        parseInitVal(res);
     }
-
     return true;
 }
 
-// 9 变量初值 InitVal -> Exp | '{' [ InitVal { ',' InitVal } ] '}'
+/**
+ * @brief 9 变量初值 InitVal -> Exp | '{' [ InitVal { ',' InitVal } ] '}'
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseInitVal(AstNode *root)
 {
     InitVal *res = new InitVal(root);
 
-    bool isExp = false;
-    bool isLBrace = false;
-    int lastIndex = index;
-    int curChildrenNums = res->children.size();
-
     if (matchExp().count(token_stream[index].type)) // 匹配Exp
-    {
-        isExp = parseExp(res);
-        if (!isExp)
-            undo(lastIndex, res, curChildrenNums);
-    }
-
-    if (!isExp && token_stream[index].type == frontend::TokenType::LBRACE) // 匹配'{' [ InitVal { ',' InitVal } ] '}'
+        parseExp(res);
+    if (token_stream[index].type == frontend::TokenType::LBRACE) // 匹配'{' [ InitVal { ',' InitVal } ] '}'
     {
         new Term(token_stream[index++], res);
-
         if (matchInitVal().count(token_stream[index].type))
         {
-            if (!parseInitVal(res))
-                return false;
-
+            parseInitVal(res);
             while (token_stream[index].type == frontend::TokenType::COMMA)
             {
                 new Term(token_stream[index++], res);
-
-                if (!parseInitVal(res))
-                    return false;
+                parseInitVal(res);
             }
         }
-
-        if (token_stream[index].type != frontend::TokenType::RBRACE)
-            return false;
         new Term(token_stream[index++], res);
-
-        isLBrace = true;
     }
-
-    if (!isExp && !isLBrace)
-        return false;
-
     return true;
 }
 
-// 10函数定义 FuncDef -> FuncType Ident '(' [FuncFParams] ')' Block
+/**
+ * @brief 10函数定义 FuncDef -> FuncType Ident '(' [FuncFParams] ')' Block
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseFuncDef(AstNode *root)
 {
     FuncDef *res = new FuncDef(root);
-
-    if (!parseFuncType(res)) // 匹配FuncType
-        return false;
-
-    if (token_stream[index].type != frontend::TokenType::IDENFR) // 匹配Ident
-        return false;
+    parseFuncType(res); // 匹配FuncType
     new Term(token_stream[index++], res);
-
-    if (token_stream[index].type != frontend::TokenType::LPARENT) // 匹配'('
-        return false;
     new Term(token_stream[index++], res);
-
     if (matchFuncFParams().count(token_stream[index].type)) // 匹配[FuncFParams]
-        if (!parseFuncFParams(res))
-            return false;
-
-    if (token_stream[index].type != frontend::TokenType::RPARENT) // 匹配')'
-        return false;
+        parseFuncFParams(res);
     new Term(token_stream[index++], res);
-
-    if (!parseBlock(res)) // 匹配Block
-        return false;
-
+    parseBlock(res); // 匹配Block
     return true;
 }
 
-// 11函数类型 FuncType -> 'void' | 'int' | 'float'
+/**
+ * @brief 11函数类型 FuncType -> 'void' | 'int' | 'float'
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseFuncType(AstNode *root)
 {
     FuncType *res = new FuncType(root);
@@ -387,84 +329,69 @@ bool Parser::parseFuncType(AstNode *root)
         new Term(token_stream[index++], res);
     else if (token_stream[index].type == frontend::TokenType::FLOATTK)
         new Term(token_stream[index++], res);
-    else
-        return false;
 
     return true;
 }
 
-// 12函数形参 FuncFParam -> BType Ident [ '[' ']' { '[' Exp ']' } ]
+/**
+ * @brief 12函数形参 FuncFParam -> BType Ident [ '[' ']' { '[' Exp ']' } ]
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseFuncFParam(AstNode *root)
 {
     FuncFParam *res = new FuncFParam(root);
-
-    if (!parseBType(res)) // 匹配BType
-        return false;
-
-    if (token_stream[index].type != frontend::TokenType::IDENFR) // 匹配Ident
-        return false;
+    parseBType(res); // 匹配BType
     new Term(token_stream[index++], res);
-
     if (token_stream[index].type == frontend::TokenType::LBRACK) // 匹配[ '[' ']' { '[' Exp ']' } ]
     {
         new Term(token_stream[index++], res);
-
-        if (token_stream[index].type != frontend::TokenType::RBRACK)
-            return false;
         new Term(token_stream[index++], res);
-
         while (token_stream[index].type == frontend::TokenType::LBRACK)
         {
             new Term(token_stream[index++], res);
-
-            if (!parseExp(res))
-                return false;
-
-            if (token_stream[index].type != frontend::TokenType::RBRACK)
-                return false;
+            parseExp(res);
             new Term(token_stream[index++], res);
         }
     }
-
     return true;
 }
 
-// 13函数形参表 FuncFParams -> FuncFParam { ',' FuncFParam }
+/**
+ * @brief 13函数形参表 FuncFParams -> FuncFParam { ',' FuncFParam }
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseFuncFParams(AstNode *root)
 {
     FuncFParams *res = new FuncFParams(root);
-
-    if (!parseFuncFParam(res)) // 匹配FuncFParam
-        return false;
-
+    parseFuncFParam(res);                                          // 匹配FuncFParam
     while (token_stream[index].type == frontend::TokenType::COMMA) // 匹配{ ',' FuncFParam }
     {
         new Term(token_stream[index++], res);
-
-        if (!parseFuncFParam(res))
-            return false;
+        parseFuncFParam(res);
     }
-
     return true;
 }
 
-// 14语句块 Block -> '{' { BlockItem } '}'
+/**
+ * @brief 14语句块 Block -> '{' { BlockItem } '}'
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseBlock(AstNode *root)
 {
     Block *res = new Block(root);
-
-    if (token_stream[index].type != frontend::TokenType::LBRACE) // 匹配'{'
-        return false;
     new Term(token_stream[index++], res);
-
     while (matchBlockItem().count(token_stream[index].type)) // 匹配{ BlockItem }
-        if (!parseBlockItem(res))
-            return false;
-
-    if (token_stream[index].type != frontend::TokenType::RBRACE) // 匹配'}'
-        return false;
+        parseBlockItem(res);
     new Term(token_stream[index++], res);
-
     return true;
 }
 
@@ -472,195 +399,73 @@ bool Parser::parseBlock(AstNode *root)
 bool Parser::parseBlockItem(AstNode *root)
 {
     BlockItem *res = new BlockItem(root);
-    bool isDecl = false;
-    bool isStmt = false;
-    int lastIndex = index;
-    int curChildrenNums = res->children.size();
-
     if (matchDecl().count(token_stream[index].type)) // 匹配Decl
-    {
-        isDecl = parseDecl(res);
-        if (!isDecl)
-            undo(lastIndex, res, curChildrenNums);
-    }
-
-    if (!isDecl && matchStmt().count(token_stream[index].type)) // 匹配Stmt
-        isStmt = parseStmt(res);
-
-    if (!isDecl && !isStmt)
-        return false;
-
+        parseDecl(res);
+    else if (matchStmt().count(token_stream[index].type)) // 匹配Stmt
+        parseStmt(res);
     return true;
 }
 
-// 16语句 Stmt -> LVal '=' Exp ';' | Block | 'if' '(' Cond ')' Stmt [ 'else' Stmt ] | 'while' '(' Cond ')' Stmt | 'break' ';' | 'continue' ';' | 'return' [Exp] ';' | [Exp] ';'
+/**
+ * @brief 16语句 Stmt -> LVal '=' Exp ';' | Block | 'if' '(' Cond ')' Stmt [ 'else' Stmt ] | 'while' '(' Cond ')' Stmt | 'break' ';' | 'continue' ';' | 'return' [Exp] ';' | [Exp] ';'
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseStmt(AstNode *root)
 {
     Stmt *res = new Stmt(root);
-
-    bool isLVal = false;
-    bool isBlock = false;
-    bool isKeyword = false; // 匹配'if'、'while'、'break'、'continue'、'return'
-    bool isExp = false;
-    bool isSemicn = false;
-    int lastIndex = index;
-    int curChildrenNums = res->children.size();
+    saveIndex;
+    saveChildrenNum;
 
     if (matchLVal().count(token_stream[index].type)) // 匹配LVal '=' Exp ';'
     {
-        isLVal = parseLVal(res);
-
-        if (!isLVal)
-        {
-            undo(lastIndex, res, curChildrenNums);
-            goto BlockCase;
-        }
-
+        parseLVal(res);
         if (token_stream[index].type != frontend::TokenType::ASSIGN)
         {
-            isLVal = false;
-            undo(lastIndex, res, curChildrenNums);
+            undo(lastIndex, res, curChildrenNums); // 不可删除
             goto BlockCase;
         }
         new Term(token_stream[index++], res);
-
-        if (!parseExp(res))
-        { // Exp
-            isLVal = false;
-            undo(lastIndex, res, curChildrenNums);
-            goto BlockCase;
-        }
-
-        if (token_stream[index].type != frontend::TokenType::SEMICN)
-        {
-            isLVal = false;
-            undo(lastIndex, res, curChildrenNums);
-            goto BlockCase;
-        }
+        parseExp(res);
         new Term(token_stream[index++], res);
-
         return true;
     }
 
 BlockCase:
-    if (!isLVal && matchBlock().count(token_stream[index].type)) // 匹配Block
-    {
-        isBlock = parseBlock(res);
-        if (!isBlock)
-            undo(lastIndex, res, curChildrenNums);
-        else
-            return true;
-    }
-
-    if (token_stream[index].type == frontend::TokenType::IFTK) // 匹配'if' '(' Cond ')' Stmt [ 'else' Stmt ]
+    if (matchBlock().count(token_stream[index].type)) // 匹配Block
+        parseBlock(res);
+    else if (token_stream[index].type == frontend::TokenType::IFTK) // 匹配'if' '(' Cond ')' Stmt [ 'else' Stmt ]
     {
         new Term(token_stream[index++], res);
-
-        if (token_stream[index].type != frontend::TokenType::LPARENT)
-        {
-            isKeyword = false;
-            undo(lastIndex, res, curChildrenNums);
-            goto ExpCase;
-        }
         new Term(token_stream[index++], res);
-
-        if (!parseCond(res))
-        {
-            isKeyword = false;
-            undo(lastIndex, res, curChildrenNums);
-            goto ExpCase;
-        }
-
-        if (token_stream[index].type != frontend::TokenType::RPARENT)
-        {
-            isKeyword = false;
-            undo(lastIndex, res, curChildrenNums);
-            goto ExpCase;
-        }
+        parseCond(res);
         new Term(token_stream[index++], res);
-
-        if (!parseStmt(res))
-        {
-            isKeyword = false;
-            undo(lastIndex, res, curChildrenNums);
-            goto ExpCase;
-        }
-
+        parseStmt(res);
         if (token_stream[index].type == frontend::TokenType::ELSETK)
         {
             new Term(token_stream[index++], res);
-            if (!parseStmt(res))
-            {
-                isKeyword = false;
-                undo(lastIndex, res, curChildrenNums);
-                goto ExpCase;
-            }
+            parseStmt(res);
         }
-        return true;
     }
     else if (token_stream[index].type == frontend::TokenType::WHILETK) // 匹配'while' '(' Cond ')' Stmt
     {
         new Term(token_stream[index++], res);
-
-        if (token_stream[index].type != frontend::TokenType::LPARENT)
-        {
-            isKeyword = false;
-            undo(lastIndex, res, curChildrenNums);
-            goto ExpCase;
-        }
         new Term(token_stream[index++], res);
-
-        if (!parseCond(res))
-        {
-            isKeyword = false;
-            undo(lastIndex, res, curChildrenNums);
-            goto ExpCase;
-        }
-
-        if (token_stream[index].type != frontend::TokenType::RPARENT)
-        {
-            isKeyword = false;
-            undo(lastIndex, res, curChildrenNums);
-            goto ExpCase;
-        }
+        parseCond(res);
         new Term(token_stream[index++], res);
-
-        if (!parseStmt(res))
-        {
-            isKeyword = false;
-            undo(lastIndex, res, curChildrenNums);
-            goto ExpCase;
-        }
-
-        return true;
+        parseStmt(res);
     }
     else if (token_stream[index].type == frontend::TokenType::BREAKTK) // 匹配'break' ';'
     {
         new Term(token_stream[index++], res);
-
-        if (token_stream[index].type != frontend::TokenType::SEMICN)
-        {
-            isKeyword = false;
-            undo(lastIndex, res, curChildrenNums);
-            goto ExpCase;
-        }
         new Term(token_stream[index++], res);
-
-        return true;
     }
     else if (token_stream[index].type == frontend::TokenType::CONTINUETK) // 匹配'continue' ';'
     {
         new Term(token_stream[index++], res);
-
-        if (token_stream[index].type != frontend::TokenType::SEMICN)
-        {
-            isKeyword = false;
-            undo(lastIndex, res, curChildrenNums);
-            goto ExpCase;
-        }
         new Term(token_stream[index++], res);
-
-        return true;
     }
     else if (token_stream[index].type == frontend::TokenType::RETURNTK) // 匹配'return' [Exp] ';'
     {
@@ -669,168 +474,111 @@ BlockCase:
         if (matchExp().count(token_stream[index].type))
             parseExp(res);
 
-        if (token_stream[index].type != frontend::TokenType::SEMICN)
-        {
-            isKeyword = false;
-            undo(lastIndex, res, curChildrenNums);
-            goto ExpCase;
-        }
         new Term(token_stream[index++], res);
-
-        return true;
     }
-
-ExpCase:
-    if (!isLVal && !isBlock && !isKeyword && matchExp().count(token_stream[index].type)) // 匹配[Exp] ';'
+    else if (matchExp().count(token_stream[index].type)) // 匹配[Exp] ';'
     {
-        isExp = parseExp(res);
-
-        if (isExp)
-        {
-            if (token_stream[index].type == frontend::TokenType::SEMICN)
-            {
-                new Term(token_stream[index++], res);
-                return true;
-            }
-            else
-            {
-                isExp = false;
-                undo(lastIndex, res, curChildrenNums);
-                goto SEMICNCase;
-            }
-        }
-        else
-        {
-            isExp = false;
-            undo(lastIndex, res, curChildrenNums);
-            goto SEMICNCase;
-        }
-    }
-
-SEMICNCase:
-    if (!isLVal && !isBlock && !isKeyword && !isExp && token_stream[index].type == frontend::TokenType::SEMICN) // 匹配';'
-    {
+        parseExp(res);
         new Term(token_stream[index++], res);
-        return true;
     }
-
-    if (!isLVal && !isBlock && !isKeyword && !isExp && !isSemicn)
-        return false;
+    else if (token_stream[index].type == frontend::TokenType::SEMICN) // 匹配';'
+        new Term(token_stream[index++], res);
 
     return true;
 }
 
-// 17表达式 Exp -> AddExp
+/**
+ * @brief 17表达式 Exp -> AddExp
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseExp(AstNode *root)
 {
     Exp *res = new Exp(root);
-
-    if (!parseAddExp(res))
-        return false;
-
+    parseAddExp(res);
     return true;
 }
 
-// 18条件表达式 Cond -> LOrExp
+/**
+ * @brief 18条件表达式 Cond -> LOrExp
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseCond(AstNode *root)
 {
     Cond *res = new Cond(root);
-
-    if (!parseLOrExp(res))
-        return false;
-
+    parseLOrExp(res);
     return true;
 }
 
-// 19左值表达式 LVal -> Ident { '[' Exp ']' }
+/**
+ * @brief 19左值表达式 LVal -> Ident { '[' Exp ']' }
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseLVal(AstNode *root)
 {
     LVal *res = new LVal(root);
-
-    if (token_stream[index].type != frontend::TokenType::IDENFR) // 匹配Ident
-        return false;
-    new Term(token_stream[index++], res);
-
+    new Term(token_stream[index++], res);                           // 匹配Ident
     while (token_stream[index].type == frontend::TokenType::LBRACK) // 匹配{ '[' Exp ']' }
     {
         new Term(token_stream[index++], res);
-
-        if (!parseExp(res))
-            return false;
-
-        if (token_stream[index].type != frontend::TokenType::RBRACK)
-            return false;
+        parseExp(res);
         new Term(token_stream[index++], res);
     }
-
     return true;
 }
 
-// 20数值 Number -> IntConst | floatConst
+/**
+ * @brief 20数值 Number -> IntConst | floatConst
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseNumber(AstNode *root)
 {
     Number *res = new Number(root);
-
-    if (token_stream[index].type != frontend::TokenType::INTLTR && token_stream[index].type != frontend::TokenType::FLOATLTR)
-        return false;
     new Term(token_stream[index++], res);
-
     return true;
 }
 
-// 21基本表达式 PrimaryExp -> '(' Exp ')' | LVal | Number
+/**
+ * @brief 21基本表达式 PrimaryExp -> '(' Exp ')' | LVal | Number
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parsePrimaryExp(AstNode *root)
 {
     PrimaryExp *res = new PrimaryExp(root);
-
-    bool isLParent = false;
-    bool isLVal = false;
-    bool isNumber = false;
-    int lastIndex = index;
-    int curChildrenNums = res->children.size();
-
     if (token_stream[index].type == frontend::TokenType::LPARENT) // 匹配'(' Exp ')'
     {
         new Term(token_stream[index++], res);
-
-        isLParent = parseExp(res);
-        if (isLParent && token_stream[index].type == frontend::TokenType::RPARENT)
-        {
-            new Term(token_stream[index++], res); // ')'
-            return true;
-        }
-        else
-        {
-            isLParent = false;
-            undo(lastIndex, res, curChildrenNums);
-        }
+        parseExp(res);
+        new Term(token_stream[index++], res); // ')'
     }
-
-    if (!isLParent && matchLVal().count(token_stream[index].type)) // 匹配LVal
-    {
-        isLVal = parseLVal(res);
-        if (!isLVal)
-            undo(lastIndex, res, curChildrenNums);
-        else
-            return true;
-    }
-
-    if (!isLParent && !isLVal && matchNumber().count(token_stream[index].type)) // 匹配Number
-    {
-        isNumber = parseNumber(res);
-        if (!isNumber)
-            undo(lastIndex, res, curChildrenNums);
-        else
-            return true;
-    }
-
-    if (!isLParent && !isLVal && !isNumber)
-        return false;
-
+    else if (matchLVal().count(token_stream[index].type)) // 匹配LVal
+        parseLVal(res);
+    else if (matchNumber().count(token_stream[index].type)) // 匹配Number
+        parseNumber(res);
     return true;
 }
 
-// 22一元表达式 UnaryExp -> PrimaryExp | Ident '(' [FuncRParams] ')' | UnaryOp UnaryExp
+/**
+ * @brief 22一元表达式 UnaryExp -> PrimaryExp | Ident '(' [FuncRParams] ')' | UnaryOp UnaryExp
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseUnaryExp(AstNode *root)
 {
     //? 这个表达式存在问题，比如测试点9中的b=func(a);
@@ -843,75 +591,47 @@ bool Parser::parseUnaryExp(AstNode *root)
     //? 所以需要修改匹配的顺序，先进行Ident '(' [FuncRParams] ')'匹配
     //? 然后就可以解决这一类问题
     UnaryExp *res = new UnaryExp(root);
-
-    bool isPrimaryExp = false;
-    bool isIdent = false;
-    bool isUnaryOp = false;
-    int lastIndex = index;
-    int curChildrenNums = res->children.size();
+    saveIndex;
+    saveChildrenNum;
 
     if (token_stream[index].type == frontend::TokenType::IDENFR) // 匹配Ident '(' [FuncRParams] ')'
     {
         new Term(token_stream[index++], res);
-        isIdent = true;
-
         if (token_stream[index].type != frontend::TokenType::LPARENT)
         {
-            isIdent = false;
-            undo(lastIndex, res, curChildrenNums);
+            undo(lastIndex, res, curChildrenNums); // 不可删除
             goto PrimaryExpCase;
         }
         new Term(token_stream[index++], res);
-
         if (matchFuncRParams().count(token_stream[index].type))
             parseFuncRParams(res);
-
-        if (token_stream[index].type != frontend::TokenType::RPARENT)
-        {
-            isIdent = false;
-            undo(lastIndex, res, curChildrenNums);
-            goto PrimaryExpCase;
-        }
         new Term(token_stream[index++], res);
-
         return true;
     }
 
 PrimaryExpCase:
-    if (!isIdent && matchPrimaryExp().count(token_stream[index].type)) // 匹配PrimaryExp
+    if (matchPrimaryExp().count(token_stream[index].type)) // 匹配PrimaryExp
     {
-        isPrimaryExp = parsePrimaryExp(res);
-        if (!isPrimaryExp)
-            undo(lastIndex, res, curChildrenNums);
-        else
-            return true;
+        parsePrimaryExp(res);
+        return true;
     }
 
-UnaryOpCase:
-    if (!isPrimaryExp && !isIdent && matchUnaryOp().count(token_stream[index].type)) // 匹配UnaryOp UnaryExp
+    if (matchUnaryOp().count(token_stream[index].type)) // 匹配UnaryOp UnaryExp
     {
-        isUnaryOp = parseUnaryOp(res);
-        if (!isUnaryOp)
-        {
-            undo(lastIndex, res, curChildrenNums);
-            return false;
-        }
-
-        if (!parseUnaryExp(res))
-        {
-            isUnaryOp = false;
-            undo(lastIndex, res, curChildrenNums);
-            return false;
-        }
+        parseUnaryOp(res);
+        parseUnaryExp(res);
     }
-
-    if (!isPrimaryExp && !isIdent && !isUnaryOp)
-        return false;
 
     return true;
 }
 
-// 23单目运算符 UnaryOp -> '+' | '-' | '!'
+/**
+ * @brief 23单目运算符 UnaryOp -> '+' | '-' | '!'
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseUnaryOp(AstNode *root)
 {
     UnaryOp *res = new UnaryOp(root);
@@ -923,113 +643,117 @@ bool Parser::parseUnaryOp(AstNode *root)
     return true;
 }
 
-// 24函数实参表 FuncRParams -> Exp { ',' Exp }
+/**
+ * @brief 24函数实参表 FuncRParams -> Exp { ',' Exp }
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseFuncRParams(AstNode *root)
 {
     FuncRParams *res = new FuncRParams(root);
-
-    if (!parseExp(res))
-        return false;
-
+    parseExp(res);
     while (token_stream[index].type == frontend::TokenType::COMMA)
     {
         new Term(token_stream[index++], res);
-        if (!parseExp(res))
-            return false;
+        parseExp(res);
     }
-
     return true;
 }
 
-// 25乘除模表达式 MulExp -> UnaryExp { ( '*' | '/' | '%' ) UnaryExp }
+/**
+ * @brief 25乘除模表达式 MulExp -> UnaryExp { ( '*' | '/' | '%' ) UnaryExp }
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseMulExp(AstNode *root)
 {
     MulExp *res = new MulExp(root);
-
-    if (!parseUnaryExp(res))
-        return false;
-
+    parseUnaryExp(res);
     while (token_stream[index].type == frontend::TokenType::MULT || token_stream[index].type == frontend::TokenType::DIV || token_stream[index].type == frontend::TokenType::MOD)
     {
         new Term(token_stream[index++], res);
-
-        if (!parseUnaryExp(res))
-            return false;
+        parseUnaryExp(res);
     }
-
     return true;
 }
 
-// 26加减表达式 AddExp -> MulExp { ( '+' | '-' ) MulExp }
+/**
+ * @brief 26加减表达式 AddExp -> MulExp { ( '+' | '-' ) MulExp }
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseAddExp(AstNode *root)
 {
     AddExp *res = new AddExp(root);
-
-    if (!parseMulExp(res))
-        return false;
-
+    parseMulExp(res);
     while (token_stream[index].type == frontend::TokenType::PLUS || token_stream[index].type == frontend::TokenType::MINU)
     {
         new Term(token_stream[index++], res);
-        if (!parseMulExp(res))
-            return false;
+        parseMulExp(res);
     }
-
     return true;
 }
 
-// 27关系表达式 RelExp -> AddExp { ( '<' | '>' | '<=' | '>=' ) AddExp }
+/**
+ * @brief 27关系表达式 RelExp -> AddExp { ( '<' | '>' | '<=' | '>=' ) AddExp }
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseRelExp(AstNode *root)
 {
     RelExp *res = new RelExp(root);
-
-    if (!parseAddExp(res))
-        return false;
-
+    parseAddExp(res);
     while (token_stream[index].type == frontend::TokenType::LSS || token_stream[index].type == frontend::TokenType::GTR || token_stream[index].type == frontend::TokenType::LEQ || token_stream[index].type == frontend::TokenType::GEQ)
     {
         new Term(token_stream[index++], res);
-
-        if (!parseAddExp(res))
-            return false;
+        parseAddExp(res);
     }
-
     return true;
 }
 
-// 28相等性表达式 EqExp -> RelExp { ( '==' | '!=' ) RelExp }
+/**
+ * @brief 28相等性表达式 EqExp -> RelExp { ( '==' | '!=' ) RelExp }
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseEqExp(AstNode *root)
 {
     EqExp *res = new EqExp(root);
-
-    if (!parseRelExp(res))
-        return false;
-
+    parseRelExp(res);
     while (token_stream[index].type == frontend::TokenType::EQL || token_stream[index].type == frontend::TokenType::NEQ)
     {
         new Term(token_stream[index++], res);
-        if (!parseRelExp(res))
-            return false;
+        parseRelExp(res);
     }
-
     return true;
 }
 
-// 29逻辑与表达式 LAndExp -> EqExp [ '&&' LAndExp ]
+/**
+ * @brief 29逻辑与表达式 LAndExp -> EqExp [ '&&' LAndExp ]
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseLAndExp(AstNode *root)
 {
     LAndExp *res = new LAndExp(root);
-
-    if (!parseEqExp(res))
-        return false;
-    else if (token_stream[index].type == frontend::TokenType::AND)
+    parseEqExp(res);
+    if (token_stream[index].type == frontend::TokenType::AND)
     {
         new Term(token_stream[index++], res);
-
-        if (!parseLAndExp(res))
-            return false;
+        parseLAndExp(res);
     }
-
     return true;
 }
 
@@ -1037,29 +761,27 @@ bool Parser::parseLAndExp(AstNode *root)
 bool Parser::parseLOrExp(AstNode *root)
 {
     LOrExp *res = new LOrExp(root);
-
-    if (!parseLAndExp(res))
-        return false;
-    else if (token_stream[index].type == frontend::TokenType::OR)
+    parseLAndExp(res);
+    if (token_stream[index].type == frontend::TokenType::OR)
     {
         new Term(token_stream[index++], res);
-
-        if (!parseLOrExp(res))
-            return false;
+        parseLOrExp(res);
     }
-
     return true;
 }
 
-// 31常量表达式 ConstExp -> AddExp
+/**
+ * @brief 31常量表达式 ConstExp -> AddExp
+ * @param root
+ * @return bool
+ * @author LeeYanyu1234 (343820386@qq.com)
+ * @date 2024-06-17
+ */
 bool Parser::parseConstExp(AstNode *root)
 {
     ConstExp *res = new ConstExp(root);
-
-    if (!parseAddExp(res))
-        return false;
-    else
-        return true;
+    parseAddExp(res);
+    return true;
 }
 
 std::set<frontend::TokenType> Parser::matchCompUnit()
