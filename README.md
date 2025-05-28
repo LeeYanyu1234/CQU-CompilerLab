@@ -33,14 +33,17 @@
 
 ### 3.2 准备Linux环境
 
-这里不建议配置Windows实验环境，因为后面的qemu只能在Linux环境下运行。有两种方式可以配置Linux环境，一种是通过VMware虚拟机，另一种是通过WSL(Windows Subsystem for Linux)。这里建议选择后者，原因有两点，第一个原因是性能更好，在代码量比较大的情况下，可能打开Vscode阅读代码都会出现卡顿，使用WSL可以显著提升性能，因为它是直接运行在硬件上。第二个原因是可以更方便地通过远程连接Vscode，这样就可以更加方便地配置调试环境。
+这里不建议配置Windows实验环境，因为后面的qemu只能在Linux环境下运行。有三种方式可以配置Linux环境，第一种是通过VMware虚拟机，第二种是通过WSL(Windows Subsystem for Linux)，第三种则是安装双系统。这里建议选择第二种（或者第三种，如果你对Linux比较感兴趣，而且不嫌麻烦的话），原因有两点，第一个原因是性能更好，在代码量比较大的情况下，在VM中打开Vscode阅读代码都会出现卡顿，使用WSL可以显著提升性能，因为它是直接运行在硬件上；第二个原因是可以更方便地通过远程连接Vscode，这样就可以更加方便地配置调试环境。
 
 具体的配置方法这里不做具体讲解，因为你大概率会遇到自己的问题，所以这里仅仅给出一些步骤，具体的操作还是请STFW。
+
+通过WSL配置Linux环境的步骤如下：
 
 1. 开启Windows系统的Linux子系统功能和虚拟机平台功能。
 2. 安装WSL，可以升级到WSL2，据说性能更好。
 3. 在WSL中安装Ubuntu22.04系统。
 
+通过双系统配置Linux环境的步骤可以参考：[【Windows 和 Ubuntu 双系统的安装和卸载】](https://www.bilibili.com/video/BV1554y1n7zv/?share_source=copy_web&vd_source=7b89924a4f2455b8df2384c8fe8ba626)我自己是按照这个步骤成功安装过双系统的，应该没有什么大问题，不过安装双系统有一定风险，小心损坏C盘导致你的Windows也挂了。
 
 
 ### 3.3 准备docker环境
